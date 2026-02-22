@@ -9,6 +9,7 @@ import pytest
 
 from src.ensemble.hedge import Hedge
 from src.ensemble.loss import mae_loss, rmse_loss, smape_loss
+from src.ensemble.meta_eta import MetaEtaHedge
 from src.ensemble.scaling import by_train_mae, relative
 
 
@@ -184,3 +185,114 @@ class TestScaling:
         # Should not raise; denominator uses epsilon.
         result = relative(1.0, 0.0)
         assert result > 0
+
+
+# =====================================================================
+# MetaEtaHedge – basic behaviour
+# =====================================================================
+
+
+class TestMetaEtaHedgeBasic:
+    """MetaEtaHedge must initialise and run without errors."""
+
+    def test_default_etas(self) -> None:
+        m = MetaEtaHedge(n_experts=3)
+        assert len(m.etas) == 11
+        assert math.isclose(m.etas[0], 1.0)
+        assert m.etas[-1] < 0.002
+
+    def test_custom_etas(self) -> None:
+        m = MetaEtaHedge(n_experts=2, etas=[0.1, 0.5, 1.0])
+        assert len(m.etas) == 3
+
+    def test_predict_returns_float(self) -> None:
+        m = MetaEtaHedge(n_experts=3)
+        preds = np.array([10.0, 20.0, 30.0])
+        result = m.predict(preds)
+        assert isinstance(result, float)
+
+    def test_predict_within_expert_range(self) -> None:
+        m = MetaEtaHedge(n_experts=3)
+        preds = np.array([5.0, 15.0, 25.0])
+        result = m.predict(preds)
+        assert 5.0 <= result <= 25.0
+
+    def test_predict_update_cycle(self) -> None:
+        """predict/update cycle should work repeatedly without error."""
+        m = MetaEtaHedge(n_experts=3)
+        for _ in range(20):
+            pred = m.predict(np.array([1.0, 2.0, 3.0]))
+            assert np.isfinite(pred)
+            m.update(np.array([0.1, 0.5, 0.9]))
+
+
+# =====================================================================
+# MetaEtaHedge – eta weight dynamics
+# =====================================================================
+
+
+class TestMetaEtaWeights:
+    """Eta weights should change over time as the meta Hedge learns."""
+
+    def test_eta_weights_change_after_update(self) -> None:
+        m = MetaEtaHedge(n_experts=3)
+        initial_eta_w = m.get_eta_weights().copy()
+
+        # Run several predict/update rounds.
+        for _ in range(5):
+            m.predict(np.array([1.0, 2.0, 3.0]))
+            m.update(np.array([0.1, 0.5, 1.0]))
+
+        updated_eta_w = m.get_eta_weights()
+        # Weights must have shifted from uniform.
+        assert not np.allclose(initial_eta_w, updated_eta_w, atol=1e-10)
+
+    def test_get_eta_weights_sum_to_one(self) -> None:
+        m = MetaEtaHedge(n_experts=4)
+        m.predict(np.array([1.0, 2.0, 3.0, 4.0]))
+        m.update(np.array([0.2, 0.4, 0.6, 0.8]))
+        w = m.get_eta_weights()
+        assert math.isclose(w.sum(), 1.0, rel_tol=1e-9)
+
+
+# =====================================================================
+# MetaEtaHedge – effective eta
+# =====================================================================
+
+
+class TestMetaEtaEffective:
+    """get_effective_eta must return a valid float."""
+
+    def test_effective_eta_is_float(self) -> None:
+        m = MetaEtaHedge(n_experts=2)
+        assert isinstance(m.get_effective_eta(), float)
+
+    def test_effective_eta_in_range(self) -> None:
+        etas = [0.1, 0.5, 1.0]
+        m = MetaEtaHedge(n_experts=2, etas=etas)
+        eff = m.get_effective_eta()
+        assert min(etas) <= eff <= max(etas)
+
+
+# =====================================================================
+# MetaEtaHedge – composite weights
+# =====================================================================
+
+
+class TestMetaEtaCompositeWeights:
+    """get_weights must return proper expert weights."""
+
+    def test_weights_sum_to_one(self) -> None:
+        m = MetaEtaHedge(n_experts=4)
+        w = m.get_weights()
+        assert math.isclose(w.sum(), 1.0, rel_tol=1e-9)
+        assert len(w) == 4
+
+    def test_weights_respond_to_losses(self) -> None:
+        m = MetaEtaHedge(n_experts=3)
+        for _ in range(10):
+            m.predict(np.array([1.0, 2.0, 3.0]))
+            m.update(np.array([0.1, 0.5, 1.0]))
+        w = m.get_weights()
+        # Expert 0 (lowest loss) should have highest weight.
+        assert w[0] > w[1] > w[2]
