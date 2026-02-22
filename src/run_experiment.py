@@ -71,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--clip-quantile",
         type=float,
         default=None,
-        help="外れ値クリップ閾値 (0-100)。未指定なら OFF",
+        help="外れ値クリップ閾値 (0-1の比率, 例: 0.999)。未指定なら OFF",
     )
     parser.add_argument(
         "--experts",
@@ -192,14 +192,20 @@ def _load_and_preprocess(args: argparse.Namespace) -> pd.DataFrame:
 
     # 前処理
     clip = args.clip_quantile is not None
-    clip_pct = args.clip_quantile if clip else 99.5
+    # clip_quantile は 0-1 比率 (例: 0.999) → 0-100 パーセンタイルに変換
+    if clip:
+        upper_pct = args.clip_quantile * 100  # 0.999 → 99.9
+        lower_pct = 100.0 - upper_pct  # 0.1
+    else:
+        upper_pct = 99.5
+        lower_pct = 0.5
 
     df = preprocess(
         raw_df,
         resample_method=agg_method,
         clip=clip,
-        clip_lower_pct=100.0 - clip_pct if clip else 0.5,
-        clip_upper_pct=clip_pct if clip else 99.5,
+        clip_lower_pct=lower_pct,
+        clip_upper_pct=upper_pct,
     )
 
     # キャッシュ保存
@@ -303,14 +309,13 @@ def _run_online_phase(
         # 5) 重み更新
         ensemble.update(scaled_losses)
 
-        # 6) Expert別累積損失を更新
+        # 6) ベスト Expert を加算前の累積損失で選択（事前選択ベース）
+        best_idx = int(np.argmin(expert_cum_losses))
+
+        # 7) Expert別累積損失を更新（best_idx選択の後に加算）
         for i in range(n_experts):
             expert_cum_losses[i] += raw_losses[i]
             expert_cum_counts[i] += 1
-
-        # 7) 結果記録
-        # ベスト Expert (累積損失最小) の予測値も記録
-        best_idx = int(np.argmin(expert_cum_losses))
         records.append(
             {
                 "timestamp": tstamp,

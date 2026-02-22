@@ -97,32 +97,19 @@ class MetaEtaHedge:
                 f"got shape {losses.shape}"
             )
 
-        # Compute meta-level losses *before* updating the sub-Hedges,
-        # using each eta-Hedge's last prediction vs the realised losses.
-        if self._last_predictions is not None:
-            # Use the mean expert loss as the "true outcome" proxy, then
-            # measure how far each eta-Hedge's prediction was from the
-            # weighted-average realised loss.
-            # A simple meta-loss: absolute difference between the
-            # eta-Hedge prediction and the expert-weight-implied prediction.
-            # Each eta-Hedge predicted a scalar; the actual outcome's loss
-            # can be summarised as the weighted-average loss under that
-            # eta-Hedge's own weights.
-            meta_losses = np.array(
-                [
-                    abs(
-                        self._last_predictions[i]
-                        - float(np.dot(h.get_weights(), losses))
-                    )
-                    for i, h in enumerate(self.hedge_pool)
-                ],
-                dtype=np.float64,
-            )
-            # Normalise meta-losses to [0, 1] range to keep meta Hedge stable.
-            max_ml = meta_losses.max()
-            if max_ml > 0:
-                meta_losses = meta_losses / max_ml
-            self.meta_hedge.update(meta_losses)
+        # Compute meta-level losses *before* updating the sub-Hedges.
+        # Each eta-Hedge's meta-loss is its weighted-average expert loss
+        # (i.e., the loss the eta-Hedge "incurred" via its weight allocation).
+        # This keeps all values in the same loss scale.
+        meta_losses = np.array(
+            [float(np.dot(h.get_weights(), losses)) for h in self.hedge_pool],
+            dtype=np.float64,
+        )
+        # Normalise meta-losses to [0, 1] range to keep meta Hedge stable.
+        max_ml = meta_losses.max()
+        if max_ml > 0:
+            meta_losses = meta_losses / max_ml
+        self.meta_hedge.update(meta_losses)
 
         # Update every eta-Hedge with the expert losses.
         for h in self.hedge_pool:
