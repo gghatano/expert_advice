@@ -202,6 +202,8 @@ class KNNLag(BaseExpert):
 
     @property
     def name(self) -> str:
+        if self._max_samples != 500:
+            return f"KNNLag_{self._k}_ms{self._max_samples}"
         return f"KNNLag_{self._k}"
 
     def fit(self, history: pd.Series, **kwargs) -> None:
