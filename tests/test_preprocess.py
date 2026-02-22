@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+import textwrap
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
+from src.data.load_uci import _detect_format, _resolve_csv_path, load_electricity
 from src.data.preprocess import (
     clip_outliers,
+    drop_high_missing,
     fill_missing,
+    load_processed,
     preprocess,
     resample_hourly,
+    save_processed,
 )
 from src.data.split import TimeSeriesSplit, split_temporal
 
@@ -188,3 +195,205 @@ class TestPreprocessPipeline:
     def test_pipeline_with_clip(self, df_15min: pd.DataFrame) -> None:
         result = preprocess(df_15min, clip=True)
         assert len(result) == 4
+
+    def test_pipeline_with_drop_missing(self) -> None:
+        """drop_missing=True で欠損率の高い系列が除外される."""
+        idx = pd.date_range("2013-01-01", periods=16, freq="15min")
+        data = pd.DataFrame(
+            {
+                "good": np.arange(16, dtype=float),
+                "bad": [np.nan] * 10 + list(range(6)),  # 欠損率 62.5%
+            },
+            index=idx,
+        )
+        result = preprocess(data, drop_missing=True, missing_threshold=0.05)
+        # "bad" は除外され "good" のみ残る
+        assert "good" in result.columns
+        assert "bad" not in result.columns
+
+
+# ---------- load_uci のテスト ----------
+
+
+class TestLoadElectricity:
+    """load_uci.py の各機能のテスト."""
+
+    def _make_csv(
+        self,
+        tmp_path: Path,
+        content: str,
+        filename: str = "data.csv",
+    ) -> Path:
+        """ヘルパー: tmp_path にCSVファイルを書き出して返す."""
+        p = tmp_path / filename
+        p.write_text(textwrap.dedent(content), encoding="utf-8")
+        return p
+
+    def test_comma_separated_csv(self, tmp_path: Path) -> None:
+        """カンマ区切りCSVの読み込み."""
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime,A,B
+            2013-01-01 00:00:00,1.0,2.0
+            2013-01-01 00:15:00,3.0,4.0
+            """,
+        )
+        df = load_electricity(path=csv_path)
+        assert df.shape == (2, 2)
+        assert list(df.columns) == ["A", "B"]
+        assert df.iloc[0]["A"] == pytest.approx(1.0)
+
+    def test_semicolon_separated_csv(self, tmp_path: Path) -> None:
+        """セミコロン区切りCSVの読み込み."""
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime;A;B
+            01/01/2013 00:00:00;1,5;2,5
+            01/01/2013 00:15:00;3,5;4,5
+            """,
+        )
+        df = load_electricity(path=csv_path)
+        assert df.shape == (2, 2)
+        # 小数点カンマ: 1,5 → 1.5
+        assert df.iloc[0]["A"] == pytest.approx(1.5)
+        assert df.iloc[0]["B"] == pytest.approx(2.5)
+
+    def test_european_decimal_detection(self, tmp_path: Path) -> None:
+        """ヨーロッパ形式（セミコロン区切り・小数点カンマ）の自動検出."""
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime;X;Y
+            01/01/2013 00:00:00;10,25;20,75
+            01/01/2013 00:15:00;30,50;40,00
+            """,
+        )
+        sep, decimal = _detect_format(csv_path)
+        assert sep == ";"
+        assert decimal == ","
+
+    def test_comma_format_detection(self, tmp_path: Path) -> None:
+        """カンマ区切り形式の自動検出."""
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime,X,Y
+            2013-01-01 00:00:00,10.25,20.75
+            """,
+        )
+        sep, decimal = _detect_format(csv_path)
+        assert sep == ","
+        assert decimal == "."
+
+    def test_trailing_semicolon_empty_column_removed(self, tmp_path: Path) -> None:
+        """末尾セミコロンによる空カラムが除去される."""
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime;A;B;
+            01/01/2013 00:00:00;1,0;2,0;
+            01/01/2013 00:15:00;3,0;4,0;
+            """,
+        )
+        df = load_electricity(path=csv_path)
+        # 空カラム "" は除去されている
+        assert "" not in df.columns
+        assert len(df.columns) == 2
+
+    def test_unnamed_column_removed(self, tmp_path: Path) -> None:
+        """Unnamed カラムが除去される."""
+        # pandas が自動生成する "Unnamed: N" カラムをシミュレート
+        csv_path = self._make_csv(
+            tmp_path,
+            """\
+            datetime,A,Unnamed: 2
+            2013-01-01 00:00:00,1.0,99.0
+            2013-01-01 00:15:00,3.0,99.0
+            """,
+        )
+        df = load_electricity(path=csv_path)
+        assert not any(c.startswith("Unnamed") for c in df.columns)
+        assert "A" in df.columns
+
+    def test_directory_auto_detect(self, tmp_path: Path) -> None:
+        """ディレクトリ指定でCSVを自動検出する."""
+        self._make_csv(
+            tmp_path,
+            """\
+            datetime,A,B
+            2013-01-01 00:00:00,1.0,2.0
+            2013-01-01 00:15:00,3.0,4.0
+            """,
+            filename="electricity.csv",
+        )
+        df = load_electricity(raw_dir=tmp_path)
+        assert df.shape == (2, 2)
+
+    def test_file_not_found_direct_path(self, tmp_path: Path) -> None:
+        """存在しないファイルパスを指定した場合 FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            load_electricity(path=tmp_path / "nonexistent.csv")
+
+    def test_file_not_found_empty_directory(self, tmp_path: Path) -> None:
+        """CSVがないディレクトリを指定した場合 FileNotFoundError."""
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        with pytest.raises(FileNotFoundError):
+            load_electricity(raw_dir=empty_dir)
+
+
+# ---------- drop_high_missing / Parquet キャッシュのテスト ----------
+
+
+class TestDropHighMissing:
+    def test_drops_high_missing_columns(self) -> None:
+        """欠損率が閾値を超える系列が除外される."""
+        idx = pd.date_range("2013-01-01", periods=100, freq="1h")
+        df = pd.DataFrame(
+            {
+                "good": np.arange(100, dtype=float),
+                "bad": [np.nan] * 20 + list(range(80)),  # 欠損率 20%
+            },
+            index=idx,
+        )
+        result = drop_high_missing(df, threshold=0.10)
+        assert "good" in result.columns
+        assert "bad" not in result.columns
+
+    def test_keeps_low_missing_columns(self) -> None:
+        """欠損率が閾値以下の系列は残る."""
+        idx = pd.date_range("2013-01-01", periods=100, freq="1h")
+        df = pd.DataFrame(
+            {
+                "A": [np.nan] * 3 + list(range(97)),  # 欠損率 3%
+                "B": np.arange(100, dtype=float),      # 欠損率 0%
+            },
+            index=idx,
+        )
+        result = drop_high_missing(df, threshold=0.05)
+        assert "A" in result.columns
+        assert "B" in result.columns
+
+
+class TestParquetCache:
+    def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
+        """save_processed → load_processed で同じデータが復元される."""
+        idx = pd.date_range("2013-01-01", periods=24, freq="1h")
+        df = pd.DataFrame(
+            {"A": np.arange(24, dtype=float), "B": np.arange(100, 124, dtype=float)},
+            index=idx,
+        )
+        df.index.name = "datetime"
+
+        saved_path = save_processed(df, name="test_cache.parquet", processed_dir=tmp_path)
+        assert saved_path.exists()
+
+        loaded = load_processed(name="test_cache.parquet", processed_dir=tmp_path)
+        pd.testing.assert_frame_equal(df, loaded, check_freq=False)
+
+    def test_load_processed_file_not_found(self, tmp_path: Path) -> None:
+        """キャッシュが存在しない場合 FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            load_processed(name="no_such_file.parquet", processed_dir=tmp_path)

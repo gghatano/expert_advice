@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from src.experts.base import BaseExpert
+from src.experts.factory import create_experts
 from src.experts.moving_avg import SMA, Median
 from src.experts.naive import Drift, LastValue, SeasonalNaive
 from src.experts.regression import HuberRegressorLag, KNNLag, RidgeLag
@@ -416,3 +417,120 @@ class TestSTLSeasonalMean:
         result = expert.predict_next(hourly_history, ts)
         assert isinstance(result, float)
         assert not math.isnan(result)
+
+
+# ---------------------------------------------------------------------------
+# Factory tests (create_experts)
+# ---------------------------------------------------------------------------
+
+class TestCreateExperts:
+    """Tests for the create_experts factory function."""
+
+    def test_light80_returns_around_80_experts(self):
+        experts = create_experts("light80")
+        assert 70 <= len(experts) <= 90, f"Expected ~80 experts, got {len(experts)}"
+
+    def test_light80_names_are_unique(self):
+        experts = create_experts("light80")
+        names = [e.name for e in experts]
+        assert len(names) == len(set(names)), f"Duplicate names found: {sorted(n for n in names if names.count(n) > 1)}"
+
+    def test_unknown_preset_raises_value_error(self):
+        with pytest.raises(ValueError, match="Unknown preset"):
+            create_experts("nonexistent_preset")
+
+    def test_light80_all_are_base_expert(self):
+        experts = create_experts("light80")
+        for expert in experts:
+            assert isinstance(expert, BaseExpert), f"{expert.name} is not a BaseExpert"
+
+
+# ---------------------------------------------------------------------------
+# SMA / Median / EMA — NaN and edge-case coverage
+# ---------------------------------------------------------------------------
+
+class TestSMANaN:
+    """SMA handling of NaN values and edge cases."""
+
+    def test_nan_in_history(self):
+        """SMA should handle NaN values by dropping them."""
+        idx = pd.date_range("2024-01-01", periods=6, freq="h")
+        series = pd.Series([1.0, float("nan"), 3.0, float("nan"), 5.0, 6.0], index=idx)
+        expert = SMA(window=6)
+        ts = idx[-1] + pd.Timedelta(hours=1)
+        result = expert.predict_next(series, ts)
+        assert isinstance(result, float)
+        assert not math.isnan(result)
+        # Mean of [1.0, 3.0, 5.0, 6.0] = 3.75
+        assert math.isclose(result, 3.75)
+
+    def test_window_larger_than_history(self):
+        """When window > len(history), SMA should use all available data."""
+        idx = pd.date_range("2024-01-01", periods=3, freq="h")
+        series = pd.Series([2.0, 4.0, 6.0], index=idx)
+        expert = SMA(window=100)
+        ts = idx[-1] + pd.Timedelta(hours=1)
+        result = expert.predict_next(series, ts)
+        assert isinstance(result, float)
+        assert not math.isnan(result)
+        # Mean of [2.0, 4.0, 6.0] = 4.0
+        assert math.isclose(result, 4.0)
+
+
+class TestMedianNaN:
+    """Median handling of NaN values."""
+
+    def test_nan_in_history(self):
+        """Median should handle NaN values by dropping them."""
+        idx = pd.date_range("2024-01-01", periods=5, freq="h")
+        series = pd.Series([1.0, float("nan"), 3.0, float("nan"), 5.0], index=idx)
+        expert = Median(window=5)
+        ts = idx[-1] + pd.Timedelta(hours=1)
+        result = expert.predict_next(series, ts)
+        assert isinstance(result, float)
+        assert not math.isnan(result)
+        # Median of [1.0, 3.0, 5.0] = 3.0
+        assert math.isclose(result, 3.0)
+
+
+class TestEMAEdgeCases:
+    """EMA edge cases: empty history, NaN, long history with max_lookback."""
+
+    def test_empty_history_returns_zero(self):
+        """EMA with empty history should return 0.0."""
+        expert = EMA(alpha=0.3)
+        empty = pd.Series(dtype=float)
+        ts = pd.Timestamp("2024-01-01")
+        result = expert.predict_next(empty, ts)
+        assert result == 0.0
+
+    def test_nan_in_history(self):
+        """EMA should handle NaN values by dropping them."""
+        idx = pd.date_range("2024-01-01", periods=5, freq="h")
+        series = pd.Series([10.0, float("nan"), 20.0, float("nan"), 30.0], index=idx)
+        expert = EMA(alpha=0.5)
+        ts = idx[-1] + pd.Timedelta(hours=1)
+        result = expert.predict_next(series, ts)
+        assert isinstance(result, float)
+        assert not math.isnan(result)
+
+    def test_max_lookback_limits_computation(self):
+        """EMA with max_lookback should only use the last N observations."""
+        idx = pd.date_range("2024-01-01", periods=1000, freq="h")
+        rng = np.random.default_rng(42)
+        values = rng.normal(100, 5, 1000)
+        series = pd.Series(values, index=idx)
+
+        expert_short = EMA(alpha=0.1, max_lookback=10)
+        expert_long = EMA(alpha=0.1, max_lookback=500)
+        ts = idx[-1] + pd.Timedelta(hours=1)
+
+        result_short = expert_short.predict_next(series, ts)
+        result_long = expert_long.predict_next(series, ts)
+
+        # Both should return valid floats
+        assert isinstance(result_short, float) and not math.isnan(result_short)
+        assert isinstance(result_long, float) and not math.isnan(result_long)
+        # They should generally differ because they use different windows
+        # (not guaranteed but highly likely with random data)
+        assert result_short != result_long

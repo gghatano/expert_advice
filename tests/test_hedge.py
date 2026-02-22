@@ -18,6 +18,46 @@ from src.ensemble.scaling import by_train_mae, relative
 # =====================================================================
 
 
+class TestHedgeValidation:
+    """Hedge constructor and method input validation."""
+
+    def test_n_experts_less_than_one_raises(self) -> None:
+        with pytest.raises(ValueError, match="n_experts must be >= 1"):
+            Hedge(n_experts=0, eta=1.0)
+
+    def test_n_experts_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="n_experts must be >= 1"):
+            Hedge(n_experts=-5, eta=1.0)
+
+    def test_eta_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="eta must be positive"):
+            Hedge(n_experts=3, eta=0.0)
+
+    def test_eta_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="eta must be positive"):
+            Hedge(n_experts=3, eta=-0.5)
+
+    def test_predict_wrong_shape_raises(self) -> None:
+        h = Hedge(n_experts=3, eta=1.0)
+        with pytest.raises(ValueError, match="Expected array of length 3"):
+            h.predict(np.array([1.0, 2.0]))
+
+    def test_predict_2d_array_raises(self) -> None:
+        h = Hedge(n_experts=3, eta=1.0)
+        with pytest.raises(ValueError):
+            h.predict(np.array([[1.0, 2.0, 3.0]]))
+
+    def test_update_wrong_shape_raises(self) -> None:
+        h = Hedge(n_experts=3, eta=1.0)
+        with pytest.raises(ValueError, match="Expected array of length 3"):
+            h.update(np.array([0.1, 0.2]))
+
+    def test_get_top_k_zero_raises(self) -> None:
+        h = Hedge(n_experts=3, eta=1.0)
+        with pytest.raises(ValueError, match="k must be >= 1"):
+            h.get_top_k(0)
+
+
 class TestHedgeMonotonicity:
     """Experts with smaller losses must gain relative weight."""
 

@@ -16,7 +16,19 @@ import pytest
 
 from src.data.preprocess import preprocess
 from src.data.split import split_temporal
-from src.run_experiment import _load_and_preprocess, build_parser, main
+from src.ensemble.hedge import Hedge
+from src.ensemble.meta_eta import MetaEtaHedge
+from src.run_experiment import (
+    _compute_train_mae_naive,
+    _create_ensemble,
+    _generate_run_id,
+    _load_and_preprocess,
+    _parse_etas,
+    _select_series,
+    _set_seed,
+    build_parser,
+    main,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -400,3 +412,173 @@ class TestReproducibility:
             decimal=10,
             err_msg="同じseedなのにy_trueが異なります",
         )
+
+
+# ---------------------------------------------------------------------------
+# 5. ヘルパー関数のユニットテスト
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateRunId:
+    """_generate_run_id のテスト."""
+
+    def test_same_args_produce_same_hash_suffix(self) -> None:
+        """同じ引数で同じrun_idの後半ハッシュが生成されること."""
+        parser = build_parser()
+        args = parser.parse_args(["--seed", "42", "--experts", "light30"])
+
+        run_id_1 = _generate_run_id(args)
+        run_id_2 = _generate_run_id(args)
+
+        # ハッシュ部分 (末尾6文字) が一致すること
+        hash_1 = run_id_1.split("_")[-1]
+        hash_2 = run_id_2.split("_")[-1]
+        assert hash_1 == hash_2, (
+            f"同じ引数なのにハッシュが異なります: {hash_1} != {hash_2}"
+        )
+        assert len(hash_1) == 6
+
+
+class TestSetSeed:
+    """_set_seed のテスト."""
+
+    def test_seed_makes_random_reproducible(self) -> None:
+        """seed固定後のrandomとnumpyの出力が再現可能なこと."""
+        import random as stdlib_random
+
+        _set_seed(123)
+        rand_val_1 = stdlib_random.random()
+        np_val_1 = np.random.rand()
+
+        _set_seed(123)
+        rand_val_2 = stdlib_random.random()
+        np_val_2 = np.random.rand()
+
+        assert rand_val_1 == rand_val_2
+        assert np_val_1 == np_val_2
+
+
+class TestParseEtas:
+    """_parse_etas のテスト."""
+
+    def test_none_returns_none(self) -> None:
+        """None → None."""
+        assert _parse_etas(None) is None
+
+    def test_csv_string_returns_float_list(self) -> None:
+        """"0.1,0.5,1.0" → [0.1, 0.5, 1.0]."""
+        result = _parse_etas("0.1,0.5,1.0")
+        assert result == pytest.approx([0.1, 0.5, 1.0])
+
+    def test_empty_string_returns_empty_list(self) -> None:
+        """"" → []."""
+        assert _parse_etas("") == []
+
+
+class TestComputeTrainMaeNaive:
+    """_compute_train_mae_naive のテスト."""
+
+    def test_normal_series(self) -> None:
+        """正常な系列でMAEが正しい値を返す."""
+        # series: [1, 3, 5] → y_true=[3,5], y_pred=[1,3] → |3-1|=2, |5-3|=2 → MAE=2.0
+        series = pd.Series([1.0, 3.0, 5.0])
+        assert _compute_train_mae_naive(series) == pytest.approx(2.0)
+
+    def test_length_1_returns_fallback(self) -> None:
+        """長さ1以下の系列で1.0を返す (fallback)."""
+        assert _compute_train_mae_naive(pd.Series([5.0])) == 1.0
+        assert _compute_train_mae_naive(pd.Series([], dtype=float)) == 1.0
+
+    def test_constant_series_returns_fallback(self) -> None:
+        """定数系列で1.0を返す (MAE=0のfallback)."""
+        series = pd.Series([3.0, 3.0, 3.0, 3.0])
+        assert _compute_train_mae_naive(series) == 1.0
+
+
+class TestSelectSeries:
+    """_select_series のテスト."""
+
+    def test_n_series_selects_first_n(self) -> None:
+        """n_series=3 で先頭3件."""
+        cols = pd.Index([f"s{i}" for i in range(10)])
+        result = _select_series(cols, n_series=3, series_sample=None)
+        assert result == ["s0", "s1", "s2"]
+
+    def test_series_sample_selects_random_k(self) -> None:
+        """series_sample=2 でランダム2件."""
+        import random as stdlib_random
+
+        cols = pd.Index([f"s{i}" for i in range(10)])
+        stdlib_random.seed(0)
+        result = _select_series(cols, n_series=None, series_sample=2)
+        assert len(result) == 2
+        # 全て元の列名に含まれていること
+        for s in result:
+            assert s in cols
+
+    def test_both_none_returns_all(self) -> None:
+        """両方Noneで全件."""
+        cols = pd.Index(["a", "b", "c"])
+        result = _select_series(cols, n_series=None, series_sample=None)
+        assert result == ["a", "b", "c"]
+
+
+class TestCreateEnsemble:
+    """_create_ensemble のテスト."""
+
+    def test_meta_grid_returns_meta_eta_hedge(self) -> None:
+        """eta_mode='meta_grid' で MetaEtaHedge が返る."""
+        ens = _create_ensemble(n_experts=5, eta_mode="meta_grid", etas=[0.1, 0.5])
+        assert isinstance(ens, MetaEtaHedge)
+
+    def test_fixed_returns_hedge(self) -> None:
+        """eta_mode='fixed' で Hedge が返る."""
+        ens = _create_ensemble(n_experts=5, eta_mode="fixed", etas=[0.2])
+        assert isinstance(ens, Hedge)
+        assert ens.eta == pytest.approx(0.2)
+
+
+# ---------------------------------------------------------------------------
+# 6. scale-loss relative モードの E2E テスト
+# ---------------------------------------------------------------------------
+
+
+class TestScaleLossRelativeE2E:
+    """scale-loss=relative モードのE2Eテスト."""
+
+    def test_relative_mode_produces_valid_results(self, tmp_path: Path) -> None:
+        """--scale-loss relative で正常に全パイプラインが通ること."""
+        hourly_df = _make_preprocessed_data()
+
+        argv = [
+            "--data-path", "dummy",
+            "--experts", "light30",
+            "--eta-mode", "fixed",
+            "--etas", "0.1",
+            "--scale-loss", "relative",
+            "--series-sample", "1",
+            "--seed", "42",
+        ]
+
+        with (
+            patch("src.run_experiment._load_and_preprocess", return_value=hourly_df),
+            patch("src.run_experiment._PROJECT_ROOT", tmp_path),
+        ):
+            main(argv)
+
+        report_dirs = sorted((tmp_path / "reports").iterdir())
+        assert len(report_dirs) >= 1
+        report_dir = report_dirs[-1]
+
+        # 設定確認
+        with open(report_dir / "experiment_config.json") as f:
+            config = json.load(f)
+        assert config["scale_loss"] == "relative"
+
+        # predictions が生成されていること
+        pred_df = pd.read_parquet(report_dir / "predictions.parquet")
+        assert len(pred_df) > 0
+
+        # 損失値が有限であること
+        assert np.all(np.isfinite(pred_df["loss_raw"].values))
+        assert np.all(pred_df["loss_raw"].values >= 0)
