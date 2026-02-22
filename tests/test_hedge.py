@@ -296,3 +296,221 @@ class TestMetaEtaCompositeWeights:
         w = m.get_weights()
         # Expert 0 (lowest loss) should have highest weight.
         assert w[0] > w[1] > w[2]
+
+
+# =====================================================================
+# MetaEtaHedge – eta selection validity
+# =====================================================================
+
+
+class TestMetaEtaSelection:
+    """When loss scale is known, MetaEtaHedge should favour an appropriate eta."""
+
+    def test_consistent_pattern_small_scale_concentrates_on_large_eta(self) -> None:
+        """With consistent loss patterns at small scale, large eta is favoured.
+
+        When losses have a stable ordering (expert 0 always best) and the
+        scale is small, the high-eta sub-Hedges can track the pattern
+        without destabilising, so the meta-level should concentrate weight
+        on larger eta values.
+        """
+        etas = [0.01, 0.1, 0.5, 1.0]
+        m = MetaEtaHedge(n_experts=3, etas=etas)
+        for _ in range(200):
+            m.predict(np.array([1.0, 2.0, 3.0]))
+            # Expert 0 is always best, consistent pattern, small scale.
+            m.update(np.array([0.001, 0.005, 0.009]))
+        eff = m.get_effective_eta()
+        # The largest eta should dominate; effective eta should be close
+        # to max(etas).
+        assert eff > 0.8, (
+            f"effective eta {eff:.4f} should be large (>0.8) for small-scale consistent losses"
+        )
+
+    def test_large_scale_effective_eta_lower_than_small_scale(self) -> None:
+        """With identical loss *pattern* but larger scale, effective eta is lower.
+
+        The meta-level normalises losses, but high-eta sub-Hedges become
+        more aggressive and may over-concentrate when losses are large,
+        reducing their meta-level performance relative to moderate-eta
+        sub-Hedges.
+        """
+        etas = [0.01, 0.1, 0.5, 1.0]
+
+        # Small scale.
+        m_small = MetaEtaHedge(n_experts=3, etas=etas)
+        for _ in range(200):
+            m_small.predict(np.array([1.0, 2.0, 3.0]))
+            m_small.update(np.array([0.1, 0.5, 0.9]))
+        eta_small = m_small.get_effective_eta()
+
+        # Large scale.
+        m_large = MetaEtaHedge(n_experts=3, etas=etas)
+        for _ in range(200):
+            m_large.predict(np.array([1.0, 2.0, 3.0]))
+            m_large.update(np.array([1.0, 5.0, 9.0]))
+        eta_large = m_large.get_effective_eta()
+
+        assert eta_small >= eta_large, (
+            f"Small-scale effective eta ({eta_small:.4f}) should be >= "
+            f"large-scale effective eta ({eta_large:.4f})"
+        )
+
+    def test_effective_eta_within_candidate_range(self) -> None:
+        """After updates, effective eta must remain within candidate bounds."""
+        etas = [0.01, 0.1, 0.5, 1.0]
+        m = MetaEtaHedge(n_experts=3, etas=etas)
+        rng = np.random.default_rng(2)
+        for _ in range(100):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 0.5)
+        eff = m.get_effective_eta()
+        assert min(etas) <= eff <= max(etas)
+
+
+# =====================================================================
+# MetaEtaHedge – regret non-divergence
+# =====================================================================
+
+
+class TestMetaEtaRegretNonDivergence:
+    """Weights must stay finite and well-formed under sustained random losses."""
+
+    def test_random_losses_1000_rounds(self) -> None:
+        rng = np.random.default_rng(42)
+        m = MetaEtaHedge(n_experts=5)
+        for _ in range(1000):
+            preds = rng.random(5) * 100
+            m.predict(preds)
+            m.update(rng.random(5))
+
+        w = m.get_weights()
+        assert w.shape == (5,)
+        assert np.all(np.isfinite(w)), "Weights contain NaN or Inf"
+        assert np.all(w >= 0), "Weights contain negative values"
+        assert math.isclose(w.sum(), 1.0, rel_tol=1e-9), f"Weights sum to {w.sum()}, not 1"
+
+    def test_eta_weights_stay_valid_after_many_rounds(self) -> None:
+        rng = np.random.default_rng(99)
+        m = MetaEtaHedge(n_experts=4)
+        for _ in range(1000):
+            m.predict(rng.random(4))
+            m.update(rng.random(4))
+
+        eta_w = m.get_eta_weights()
+        assert np.all(np.isfinite(eta_w)), "Eta weights contain NaN or Inf"
+        assert np.all(eta_w >= 0), "Eta weights contain negative values"
+        assert math.isclose(eta_w.sum(), 1.0, rel_tol=1e-9)
+
+    def test_effective_eta_stays_finite(self) -> None:
+        rng = np.random.default_rng(7)
+        m = MetaEtaHedge(n_experts=3)
+        for _ in range(1000):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 10)
+        eff = m.get_effective_eta()
+        assert np.isfinite(eff), "Effective eta is not finite"
+        assert eff > 0, "Effective eta should be positive"
+
+
+# =====================================================================
+# MetaEtaHedge – consistency with single-eta Hedge
+# =====================================================================
+
+
+class TestMetaEtaSingleEtaConsistency:
+    """MetaEtaHedge with one candidate eta should behave like plain Hedge."""
+
+    def test_single_eta_matches_hedge_weights(self) -> None:
+        eta = 0.1
+        n = 4
+        meta = MetaEtaHedge(n_experts=n, etas=[eta])
+        hedge = Hedge(n_experts=n, eta=eta)
+
+        rng = np.random.default_rng(12)
+        for _ in range(50):
+            losses = rng.random(n)
+            meta.predict(rng.random(n))  # required before update
+            meta.update(losses)
+            hedge.update(losses)
+
+        np.testing.assert_allclose(
+            meta.get_weights(), hedge.get_weights(), atol=1e-12,
+            err_msg="Single-eta MetaEtaHedge weights diverge from Hedge",
+        )
+
+    def test_single_eta_matches_hedge_predict(self) -> None:
+        eta = 0.3
+        n = 3
+        meta = MetaEtaHedge(n_experts=n, etas=[eta])
+        hedge = Hedge(n_experts=n, eta=eta)
+
+        rng = np.random.default_rng(55)
+        for _ in range(30):
+            losses = rng.random(n)
+            expert_preds = rng.random(n) * 100
+
+            meta_pred = meta.predict(expert_preds)
+            hedge_pred = hedge.predict(expert_preds)
+
+            # Before any update both should agree; after updates they
+            # should still track closely.
+            assert math.isclose(meta_pred, hedge_pred, rel_tol=1e-9), (
+                f"Predictions differ: meta={meta_pred}, hedge={hedge_pred}"
+            )
+
+            meta.update(losses)
+            hedge.update(losses)
+
+
+# =====================================================================
+# MetaEtaHedge – eta weight responsiveness
+# =====================================================================
+
+
+class TestMetaEtaResponsiveness:
+    """Effective eta should adapt when the loss regime changes."""
+
+    def test_effective_eta_shifts_on_regime_change(self) -> None:
+        etas = [0.01, 0.05, 0.1, 0.5, 1.0]
+        m = MetaEtaHedge(n_experts=3, etas=etas)
+        rng = np.random.default_rng(77)
+
+        # Phase 1: large losses (scale ~1.0) for 100 rounds.
+        for _ in range(100):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 1.0)
+        eta_after_large = m.get_effective_eta()
+
+        # Phase 2: small losses (scale ~0.01) for 100 rounds.
+        for _ in range(100):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 0.01)
+        eta_after_small = m.get_effective_eta()
+
+        # The effective eta should have increased after switching to small
+        # losses (smaller losses allow more aggressive learning rates).
+        assert eta_after_small > eta_after_large, (
+            f"Effective eta did not increase after regime change: "
+            f"large-loss phase={eta_after_large:.4f}, "
+            f"small-loss phase={eta_after_small:.4f}"
+        )
+
+    def test_eta_weights_are_non_stationary(self) -> None:
+        """Eta weights at round 50 should differ from those at round 150."""
+        m = MetaEtaHedge(n_experts=3)
+        rng = np.random.default_rng(33)
+
+        for _ in range(50):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 1.0)
+        snapshot_50 = m.get_eta_weights().copy()
+
+        for _ in range(100):
+            m.predict(rng.random(3))
+            m.update(rng.random(3) * 0.01)
+        snapshot_150 = m.get_eta_weights().copy()
+
+        assert not np.allclose(snapshot_50, snapshot_150, atol=1e-6), (
+            "Eta weights did not change across regime shift"
+        )
