@@ -251,18 +251,25 @@ def _run_online_phase(
     scale_loss_mode: str,
     train_mae: float,
     desc: str = "",
-) -> list[dict]:
+    snapshot_interval: int = 24,
+) -> tuple[list[dict], dict]:
     """逐次予測・重み更新ループを実行する.
 
     Returns
     -------
-    list[dict]
-        各時刻の予測結果レコードのリスト
+    tuple[list[dict], dict]
+        (records, phase_stats) のタプル。
+        records: 各時刻の予測結果レコードのリスト (既存と同一構造)
+        phase_stats: Expert別統計・重みスナップショット
     """
     records = []
     n_experts = len(experts)
     expert_cum_losses = np.zeros(n_experts, dtype=np.float64)
     expert_cum_counts = np.zeros(n_experts, dtype=np.float64)
+    expert_win_counts = np.zeros(n_experts, dtype=np.float64)
+    expert_cum_weights = np.zeros(n_experts, dtype=np.float64)
+
+    weight_snapshots: list[dict] = []
 
     # history を伸ばしていくためコピー
     running_history = history.copy()
@@ -316,6 +323,41 @@ def _run_online_phase(
         for i in range(n_experts):
             expert_cum_losses[i] += raw_losses[i]
             expert_cum_counts[i] += 1
+
+        # 勝率計算用: 各時刻で最小損失の Expert をカウント
+        min_loss = raw_losses.min()
+        winners = np.where(np.isclose(raw_losses, min_loss))[0]
+        for w in winners:
+            expert_win_counts[w] += 1
+
+        # 現在の重みを累積（平均重み計算用）
+        current_weights = ensemble.get_weights()
+        expert_cum_weights += current_weights
+
+        # 重みスナップショット (snapshot_interval ごと)
+        if t_idx % snapshot_interval == 0:
+            # 上位5 Expert の重みを記録
+            top_k = min(5, n_experts)
+            top_indices = np.argsort(current_weights)[-top_k:][::-1]
+            top_weights = [
+                {"expert_idx": int(idx), "weight": float(current_weights[idx])}
+                for idx in top_indices
+            ]
+
+            snapshot: dict = {
+                "step": t_idx,
+                "timestamp": str(tstamp),
+                "top_weights": top_weights,
+            }
+
+            # eta 重み (MetaEtaHedge の場合のみ)
+            if isinstance(ensemble, MetaEtaHedge):
+                eta_w = ensemble.get_eta_weights()
+                snapshot["eta_weights"] = [float(x) for x in eta_w]
+                snapshot["etas"] = [float(x) for x in ensemble.etas]
+
+            weight_snapshots.append(snapshot)
+
         records.append(
             {
                 "timestamp": tstamp,
@@ -333,7 +375,16 @@ def _run_online_phase(
         new_point = pd.Series([y_true], index=[tstamp])
         running_history = pd.concat([running_history, new_point])
 
-    return records
+    total_steps = len(phase_data)
+    phase_stats = {
+        "expert_cum_losses": expert_cum_losses,
+        "expert_win_counts": expert_win_counts,
+        "expert_avg_weights": expert_cum_weights / max(total_steps, 1),
+        "total_steps": total_steps,
+        "weight_snapshots": weight_snapshots,
+    }
+
+    return records, phase_stats
 
 
 # ------------------------------------------------------------------
@@ -404,9 +455,17 @@ def main(argv: list[str] | None = None) -> None:
     # 全系列の結果を格納
     all_records: list[dict] = []
     all_expert_names: list[str] = []
+    # Expert 別統計を集約（全系列の test フェーズを合算）
+    agg_expert_cum_losses: np.ndarray | None = None
+    agg_expert_win_counts: np.ndarray | None = None
+    agg_expert_avg_weights_sum: np.ndarray | None = None
+    agg_total_steps: int = 0
+    # 代表系列の weight_snapshots を保持（最初の系列の test フェーズ）
+    representative_weight_snapshots: list[dict] = []
+    is_meta_eta: bool = args.eta_mode == "meta_grid"
 
     # 系列ごとのループ
-    for col in tqdm(selected_cols, desc="Series"):
+    for col_idx, col in enumerate(tqdm(selected_cols, desc="Series")):
         train_series = splits.train[col]
         valid_series = splits.valid[col]
         test_series = splits.test[col]
@@ -433,7 +492,7 @@ def main(argv: list[str] | None = None) -> None:
         ensemble = _create_ensemble(n_experts, args.eta_mode, etas)
 
         # e) Valid 期間で逐次予測・重み更新
-        valid_records = _run_online_phase(
+        valid_records, _valid_stats = _run_online_phase(
             experts=experts,
             ensemble=ensemble,
             history=train_series,
@@ -450,7 +509,7 @@ def main(argv: list[str] | None = None) -> None:
         # f) Test 期間で逐次予測・重み更新
         # history は train + valid を合わせたもの
         train_valid_series = pd.concat([train_series, valid_series])
-        test_records = _run_online_phase(
+        test_records, test_stats = _run_online_phase(
             experts=experts,
             ensemble=ensemble,
             history=train_valid_series,
@@ -463,6 +522,34 @@ def main(argv: list[str] | None = None) -> None:
             r["series"] = col
             r["phase"] = "test"
         all_records.extend(test_records)
+
+        # Expert 別統計を全系列で集約
+        if agg_expert_cum_losses is None:
+            agg_expert_cum_losses = test_stats["expert_cum_losses"].copy()
+            agg_expert_win_counts = test_stats["expert_win_counts"].copy()
+            agg_expert_avg_weights_sum = test_stats["expert_avg_weights"].copy()
+        else:
+            agg_expert_cum_losses += test_stats["expert_cum_losses"]
+            agg_expert_win_counts += test_stats["expert_win_counts"]
+            agg_expert_avg_weights_sum += test_stats["expert_avg_weights"]
+        agg_total_steps += test_stats["total_steps"]
+
+        # 代表系列 (最初) の weight snapshots を保持
+        if col_idx == 0:
+            representative_weight_snapshots = test_stats["weight_snapshots"]
+
+    # Expert 統計をまとめる
+    expert_stats: dict | None = None
+    if agg_expert_cum_losses is not None:
+        n_series_processed = len(selected_cols)
+        expert_stats = {
+            "expert_cum_losses": agg_expert_cum_losses,
+            "expert_win_counts": agg_expert_win_counts,
+            "expert_avg_weights": agg_expert_avg_weights_sum / max(n_series_processed, 1),
+            "total_steps": agg_total_steps,
+            "weight_snapshots": representative_weight_snapshots,
+            "is_meta_eta": is_meta_eta,
+        }
 
     # 結果保存
     if all_records:
@@ -482,7 +569,7 @@ def main(argv: list[str] | None = None) -> None:
         try:
             from src.report import generate_report
 
-            generate_report(report_dir, result_df, config, all_expert_names)
+            generate_report(report_dir, result_df, config, all_expert_names, expert_stats=expert_stats)
             logger.info("レポート生成完了: %s", report_dir)
         except Exception as e:
             logger.warning("レポート生成に失敗: %s", e)

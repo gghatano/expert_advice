@@ -293,6 +293,101 @@ def _plot_series_mae_scatter(metrics: dict, report_dir: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 重み推移プロット
+# ---------------------------------------------------------------------------
+
+
+def _plot_weights(
+    report_dir: Path,
+    expert_names: list[str],
+    expert_stats: dict | None,
+) -> str:
+    """上位5 Expert の重み推移プロット (weights_plot.png)."""
+    if expert_stats is None:
+        return ""
+    snapshots = expert_stats.get("weight_snapshots", [])
+    if not snapshots:
+        return ""
+
+    _setup_plot_style()
+
+    # スナップショットから上位 Expert の重み時系列を構築
+    # まず全スナップショットに登場する Expert index を収集し、出現頻度で上位5を選ぶ
+    from collections import Counter
+
+    idx_counter: Counter = Counter()
+    for snap in snapshots:
+        for tw in snap["top_weights"]:
+            idx_counter[tw["expert_idx"]] += 1
+
+    top_indices = [idx for idx, _ in idx_counter.most_common(5)]
+
+    steps = [snap["step"] for snap in snapshots]
+    # 各 top expert の重みを時系列として取得
+    weight_series: dict[int, list[float]] = {idx: [] for idx in top_indices}
+    for snap in snapshots:
+        snap_dict = {tw["expert_idx"]: tw["weight"] for tw in snap["top_weights"]}
+        for idx in top_indices:
+            weight_series[idx].append(snap_dict.get(idx, 0.0))
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for idx in top_indices:
+        label = expert_names[idx] if idx < len(expert_names) else f"Expert-{idx}"
+        ax.plot(steps, weight_series[idx], linewidth=1.5, label=label, alpha=0.85)
+
+    ax.set_xlabel("時刻ステップ")
+    ax.set_ylabel("重み")
+    ax.set_title("上位 Expert 重み推移 (Test期間・代表系列)", fontsize=13)
+    ax.legend(fontsize=9, loc="best")
+
+    plt.tight_layout()
+    fname = "weights_plot.png"
+    fig.savefig(report_dir / fname, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return fname
+
+
+def _plot_eta_weights(
+    report_dir: Path,
+    expert_stats: dict | None,
+) -> str:
+    """eta 重みの推移プロット (eta_plot.png)。MetaEtaHedge 使用時のみ生成."""
+    if expert_stats is None:
+        return ""
+    if not expert_stats.get("is_meta_eta", False):
+        return ""
+
+    snapshots = expert_stats.get("weight_snapshots", [])
+    # eta_weights が含まれるスナップショットだけ使う
+    eta_snapshots = [s for s in snapshots if "eta_weights" in s]
+    if not eta_snapshots:
+        return ""
+
+    _setup_plot_style()
+
+    steps = [snap["step"] for snap in eta_snapshots]
+    etas = eta_snapshots[0].get("etas", [])
+    n_etas = len(etas)
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for i in range(n_etas):
+        weights_i = [snap["eta_weights"][i] for snap in eta_snapshots]
+        label = f"eta={etas[i]:.4g}"
+        ax.plot(steps, weights_i, linewidth=1.2, label=label, alpha=0.8)
+
+    ax.set_xlabel("時刻ステップ")
+    ax.set_ylabel("eta 重み")
+    ax.set_title("Meta-eta 重み推移 (Test期間・代表系列)", fontsize=13)
+    ax.legend(fontsize=8, loc="best", ncol=2)
+
+    plt.tight_layout()
+    fname = "eta_plot.png"
+    fig.savefig(report_dir / fname, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return fname
+
+
+# ---------------------------------------------------------------------------
 # Markdown レポート生成
 # ---------------------------------------------------------------------------
 
@@ -389,6 +484,24 @@ def _generate_markdown(
         lines.append(f"![系列別MAE散布図](./{plot_files['series_mae_scatter']})")
         lines.append("")
 
+    if plot_files.get("weights_plot"):
+        lines.append("## 上位 Expert 重み推移")
+        lines.append("")
+        lines.append("代表系列における上位5 Expertの重み推移です。")
+        lines.append("Hedge アルゴリズムがどの Expert を重視しているかの変遷を示します。")
+        lines.append("")
+        lines.append(f"![上位Expert重み推移](./{plot_files['weights_plot']})")
+        lines.append("")
+
+    if plot_files.get("eta_plot"):
+        lines.append("## Meta-eta 重み推移")
+        lines.append("")
+        lines.append("Meta-eta Hedge における各候補学習率 (eta) の重みの推移です。")
+        lines.append("メタレベルの Hedge がどの学習率を選好しているかを示します。")
+        lines.append("")
+        lines.append(f"![Meta-eta重み推移](./{plot_files['eta_plot']})")
+        lines.append("")
+
     # 考察
     lines.append("## 考察")
     lines.append("")
@@ -411,8 +524,24 @@ def generate_report(
     result_df: pd.DataFrame,
     config: dict,
     expert_names: list[str],
+    expert_stats: dict | None = None,
 ) -> None:
-    """レポートを生成して report_dir に保存する."""
+    """レポートを生成して report_dir に保存する.
+
+    Parameters
+    ----------
+    report_dir : Path
+        レポート出力先ディレクトリ
+    result_df : pd.DataFrame
+        予測結果 DataFrame
+    config : dict
+        実験設定
+    expert_names : list[str]
+        Expert 名のリスト
+    expert_stats : dict | None
+        Expert 別統計 (expert_cum_losses, expert_win_counts,
+        expert_avg_weights, total_steps, weight_snapshots, is_meta_eta)
+    """
     report_dir = Path(report_dir)
     report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -428,8 +557,8 @@ def generate_report(
             metrics_for_json[phase] = {k: v for k, v in m.items() if k != "series_mae"}
         json.dump(metrics_for_json, f, indent=2, ensure_ascii=False)
 
-    # Expert rank CSV
-    _save_expert_rank_csv(report_dir, result_df, expert_names)
+    # Expert rank CSV (充実版)
+    _save_expert_rank_csv(report_dir, result_df, expert_names, expert_stats=expert_stats)
 
     # プロット生成
     plot_files = {}
@@ -437,6 +566,8 @@ def generate_report(
     plot_files["timeseries_comparison"] = _plot_timeseries_comparison(result_df, report_dir)
     plot_files["cumulative_loss"] = _plot_cumulative_loss(result_df, report_dir)
     plot_files["series_mae_scatter"] = _plot_series_mae_scatter(metrics, report_dir)
+    plot_files["weights_plot"] = _plot_weights(report_dir, expert_names, expert_stats)
+    plot_files["eta_plot"] = _plot_eta_weights(report_dir, expert_stats)
 
     # Markdown レポート
     md_content = _generate_markdown(report_dir, metrics, config, plot_files)
@@ -449,9 +580,41 @@ def _save_expert_rank_csv(
     report_dir: Path,
     result_df: pd.DataFrame,
     expert_names: list[str],
+    expert_stats: dict | None = None,
 ) -> None:
-    """Expert名一覧をCSVで保存 (本格的なランキングはExpert別損失が必要)."""
+    """Expert ランキングを CSV で保存 (平均損失・平均重み・勝率を含む)."""
     if not expert_names:
         return
-    rank_df = pd.DataFrame({"rank": range(1, len(expert_names) + 1), "expert_name": expert_names})
+
+    n = len(expert_names)
+
+    if expert_stats is not None and expert_stats.get("total_steps", 0) > 0:
+        total = expert_stats["total_steps"]
+        avg_losses = expert_stats["expert_cum_losses"] / max(total, 1)
+        avg_weights = expert_stats["expert_avg_weights"]
+        win_rates = expert_stats["expert_win_counts"] / max(total, 1)
+
+        # 平均損失でソート (昇順 = 良い Expert が上位)
+        order = np.argsort(avg_losses)
+        rank_df = pd.DataFrame(
+            {
+                "rank": range(1, n + 1),
+                "expert_name": [expert_names[i] for i in order],
+                "avg_loss": [float(avg_losses[i]) for i in order],
+                "avg_weight": [float(avg_weights[i]) for i in order],
+                "win_rate": [float(win_rates[i]) for i in order],
+            }
+        )
+    else:
+        # 統計なしの場合はフォールバック（名前のみ + NaN 列）
+        rank_df = pd.DataFrame(
+            {
+                "rank": range(1, n + 1),
+                "expert_name": expert_names,
+                "avg_loss": [float("nan")] * n,
+                "avg_weight": [float("nan")] * n,
+                "win_rate": [float("nan")] * n,
+            }
+        )
+
     rank_df.to_csv(report_dir / "experts_rank.csv", index=False)
