@@ -255,6 +255,8 @@ def _run_online_phase(
     """
     records = []
     n_experts = len(experts)
+    expert_cum_losses = np.zeros(n_experts, dtype=np.float64)
+    expert_cum_counts = np.zeros(n_experts, dtype=np.float64)
 
     # history を伸ばしていくためコピー
     running_history = history.copy()
@@ -272,8 +274,11 @@ def _run_online_phase(
                 # fallback: 直近値
                 expert_preds[i] = running_history.iloc[-1] if len(running_history) > 0 else 0.0
 
-        # 2) Ensemble 予測
+        # 2) Ensemble 予測 (Hedge重み付き)
         ensemble_pred = ensemble.predict(expert_preds)
+
+        # 2b) 等重み平均予測
+        equal_weight_pred = float(np.mean(expert_preds))
 
         # 3) Loss 計算
         raw_losses = np.array(
@@ -281,6 +286,7 @@ def _run_online_phase(
             dtype=np.float64,
         )
         ensemble_raw_loss = mae_loss(y_true, ensemble_pred)
+        equal_weight_loss = mae_loss(y_true, equal_weight_pred)
 
         # 4) スケーリング
         if scale_loss_mode == "by_train_mae":
@@ -297,13 +303,24 @@ def _run_online_phase(
         # 5) 重み更新
         ensemble.update(scaled_losses)
 
-        # 6) 結果記録
+        # 6) Expert別累積損失を更新
+        for i in range(n_experts):
+            expert_cum_losses[i] += raw_losses[i]
+            expert_cum_counts[i] += 1
+
+        # 7) 結果記録
+        # ベスト Expert (累積損失最小) の予測値も記録
+        best_idx = int(np.argmin(expert_cum_losses))
         records.append(
             {
                 "timestamp": tstamp,
                 "y_true": float(y_true),
                 "y_pred": float(ensemble_pred),
+                "y_pred_equal": float(equal_weight_pred),
+                "y_pred_best": float(expert_preds[best_idx]),
                 "loss_raw": float(ensemble_raw_loss),
+                "loss_equal": float(equal_weight_loss),
+                "loss_best": float(raw_losses[best_idx]),
             }
         )
 
@@ -381,6 +398,7 @@ def main(argv: list[str] | None = None) -> None:
 
     # 全系列の結果を格納
     all_records: list[dict] = []
+    all_expert_names: list[str] = []
 
     # 系列ごとのループ
     for col in tqdm(selected_cols, desc="Series"):
@@ -401,6 +419,10 @@ def main(argv: list[str] | None = None) -> None:
 
         # c) Train 期間の naive MAE (scale-loss 用)
         train_mae = _compute_train_mae_naive(train_series)
+
+        # Expert 名リスト (初回のみ)
+        if not all_expert_names:
+            all_expert_names = [exp.name for exp in experts]
 
         # d) Ensemble 生成
         ensemble = _create_ensemble(n_experts, args.eta_mode, etas)
@@ -450,6 +472,15 @@ def main(argv: list[str] | None = None) -> None:
             if len(phase_df) > 0:
                 mean_loss = phase_df["loss_raw"].mean()
                 logger.info("%s 平均 MAE: %.4f", phase.upper(), mean_loss)
+
+        # レポート生成
+        try:
+            from src.report import generate_report
+
+            generate_report(report_dir, result_df, config, all_expert_names)
+            logger.info("レポート生成完了: %s", report_dir)
+        except Exception as e:
+            logger.warning("レポート生成に失敗: %s", e)
     else:
         logger.warning("結果が空です。データを確認してください。")
 
