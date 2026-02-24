@@ -55,6 +55,30 @@ $$\hat{y}^{(t)} = \sum_{i=1}^{N} \bar{w}_i^{(t)} \cdot f_i(x^{(t)})$$
 | **Regression** | RidgeLag, HuberLag, KNNLag | α=0.1-10; k=3-10 | 5 |
 | **Seasonal** | STLSeasonalMean | 7×24 曜日×時間プロファイル | 1 |
 
+## Why Expert Advice? — レジーム切替デモ
+
+定常的なデータでは最良の単一Expertが常に勝ちますが、現実の時系列は**最良のExpertが時間とともに入れ替わる非定常データ**です。季節パターンが強い期間、トレンドが支配する期間、ノイズが大きく平坦な期間——これらが切り替わる環境では、どの単一Expertも全区間で最良にはなれません。Hedgeアルゴリズムは損失に応じて重みを自動的に再配分し、**事後的に最良のExpertに追従**します。
+
+以下は3つのレジーム（季節パターン期 → トレンド期 → 高ノイズ平坦期、各800ステップ）を持つ合成時系列での実験結果です。
+
+### レジーム切替時系列
+
+レジームが変わるとデータの性質が大きく変化し、最適なExpertも入れ替わります:
+
+![レジーム切替時系列](docs/figures/regime_timeseries.png)
+
+### Expert重みの自動追従
+
+Hedgeアルゴリズムがレジーム切替に応じてExpert重みを自動的にシフトさせる様子:
+
+![レジーム切替重み](docs/figures/regime_weights.png)
+
+### 累積損失比較
+
+Hedgeは全期間を通じて累積損失を抑え、どの単一Expertよりも安定した性能を発揮します:
+
+![レジーム切替累積損失](docs/figures/regime_cumulative_loss.png)
+
 ## 結果
 
 以下は合成データ（正弦波+ノイズ）での実験結果です。`scripts/generate_readme_figures.py` で再現できます。
