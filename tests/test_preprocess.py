@@ -397,3 +397,61 @@ class TestParquetCache:
         """キャッシュが存在しない場合 FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             load_processed(name="no_such_file.parquet", processed_dir=tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# load_electricity のインデックス解析 (回帰テスト)
+# ---------------------------------------------------------------------------
+
+
+class TestLoadElectricityIndexParsing:
+    """実 UCI ファイル (ISO 形式・13日以降を含む) が読めることを保証する.
+
+    以前は ``parse_dates=[0]`` + ``dayfirst=True`` の組み合わせにより、
+    pandas が解析を諦めて文字列インデックスを返し、後段の resample が
+    TypeError で落ちていた。
+    """
+
+    def _write(self, tmp_path, timestamps):
+        path = tmp_path / "load.txt"
+        lines = ['"";"MT_001";"MT_002"']
+        for i, ts in enumerate(timestamps):
+            lines.append(f'"{ts}";{i};{i * 2}')
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def test_iso_format_spanning_past_the_12th(self, tmp_path):
+        import pandas as pd
+
+        from src.data.load_uci import load_electricity
+
+        stamps = pd.date_range("2011-01-01 00:15:00", periods=5000, freq="15min")
+        path = self._write(tmp_path, [s.strftime("%Y-%m-%d %H:%M:%S") for s in stamps])
+
+        df = load_electricity(path=path)
+
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert df.index[0] == pd.Timestamp("2011-01-01 00:15:00")
+        assert len(df) == 5000
+        # 後段の resample が通ること (以前はここで TypeError)
+        assert len(df.resample("1h").sum()) > 0
+
+    def test_european_day_first_format_still_works(self, tmp_path):
+        import pandas as pd
+
+        from src.data.load_uci import load_electricity
+
+        path = self._write(tmp_path, ["25/12/2011 00:15:00", "25/12/2011 00:30:00"])
+        df = load_electricity(path=path)
+
+        assert isinstance(df.index, pd.DatetimeIndex)
+        assert df.index[0] == pd.Timestamp("2011-12-25 00:15:00")
+
+    def test_unparseable_dates_raise(self, tmp_path):
+        import pytest
+
+        from src.data.load_uci import load_electricity
+
+        path = self._write(tmp_path, ["not-a-date", "also-not-a-date"])
+        with pytest.raises(ValueError, match="解析できない"):
+            load_electricity(path=path)

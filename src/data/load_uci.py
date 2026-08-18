@@ -46,9 +46,14 @@ def load_electricity(
         sep=sep,
         decimal=decimal,
         index_col=0,
-        parse_dates=[0],
-        dayfirst=True,  # ヨーロッパ形式 dd/mm/yyyy に対応
     )
+
+    # 日付は read_csv の parse_dates に任せず、明示的に変換する。
+    # parse_dates=[0] + dayfirst=True は、ISO 形式 (yyyy-mm-dd) のファイルで
+    # 13 日以降が現れると解析を諦め、警告なく文字列のインデックスを返す。
+    # UCI 版 LD2011_2014.txt がまさにこの形式のため、ここで取りこぼすと
+    # 後段の resample が TypeError になる。
+    df.index = _parse_datetime_index(df.index)
 
     # インデックス名を統一
     df.index.name = "datetime"
@@ -71,6 +76,33 @@ def load_electricity(
 
 
 # ---------- internal helpers ----------
+
+
+def _parse_datetime_index(index: pd.Index) -> pd.DatetimeIndex:
+    """インデックスを DatetimeIndex に変換する.
+
+    ISO 形式 (yyyy-mm-dd) を優先し、解析できない値が残る場合のみ
+    ヨーロッパ形式 (dd/mm/yyyy) として解釈し直す。
+
+    Raises
+    ------
+    ValueError
+        どちらの解釈でも日付として読めない場合。
+    """
+    if isinstance(index, pd.DatetimeIndex):
+        return index
+
+    values = pd.Series(index.astype(str))
+    parsed = pd.to_datetime(values, errors="coerce")
+    if parsed.isna().any():
+        parsed = pd.to_datetime(values, errors="coerce", dayfirst=True)
+    if parsed.isna().any():
+        n_bad = int(parsed.isna().sum())
+        sample = values[parsed.isna()].head(3).tolist()
+        raise ValueError(
+            f"日付として解析できない行が {n_bad} 件あります: {sample}"
+        )
+    return pd.DatetimeIndex(parsed)
 
 
 def _resolve_csv_path(
