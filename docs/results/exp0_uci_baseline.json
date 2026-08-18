@@ -1,0 +1,121 @@
+{
+  "train_end": "2014-01-01",
+  "eval_start": "2014-07-01",
+  "requested_series": 30,
+  "seed": 42,
+  "note": "Equal Weight is far off-scale in the figure; see the table for its value.",
+  "settings": [
+    {
+      "label": "1-step ahead (repo default)",
+      "horizon": 1,
+      "n_series": 26,
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "median_vs_best_fixed_pct": 147.65091021459705,
+          "mean_vs_best_fixed_pct": 165.10643672716938,
+          "win_rate": 0.0
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "median_vs_best_fixed_pct": 0.26672943771276436,
+          "mean_vs_best_fixed_pct": 0.46827175276556104,
+          "win_rate": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "median_vs_best_fixed_pct": -0.0683930898711965,
+          "mean_vs_best_fixed_pct": -0.3187096420645346,
+          "win_rate": 0.6923076923076923
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "median_vs_best_fixed_pct": 0.18470220900151862,
+          "mean_vs_best_fixed_pct": 0.34367902529332695,
+          "win_rate": 0.19230769230769232
+        },
+        {
+          "algorithm": "AdaHedge",
+          "median_vs_best_fixed_pct": -0.004723167674229036,
+          "mean_vs_best_fixed_pct": 0.08937000180551422,
+          "win_rate": 0.5
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "median_vs_best_fixed_pct": -7.600319445710248,
+          "mean_vs_best_fixed_pct": -9.635834474653791,
+          "win_rate": 0.9615384615384616
+        },
+        {
+          "algorithm": "ML-Poly",
+          "median_vs_best_fixed_pct": 0.08356052096878976,
+          "mean_vs_best_fixed_pct": 0.31998800540291483,
+          "win_rate": 0.0
+        }
+      ],
+      "best_fixed_expert_counts": {
+        "RidgeLag_100.0": 17,
+        "RidgeLag_0.1": 6,
+        "LastValue": 1,
+        "EMA_0.9": 1,
+        "SeasonalNaive_24": 1
+      }
+    },
+    {
+      "label": "24-hour ahead (day-ahead)",
+      "horizon": 24,
+      "n_series": 26,
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "median_vs_best_fixed_pct": 91.84983487696528,
+          "mean_vs_best_fixed_pct": 113.13883048461958,
+          "win_rate": 0.0
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "median_vs_best_fixed_pct": 0.16466879515014132,
+          "mean_vs_best_fixed_pct": 0.1918880960869925,
+          "win_rate": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "median_vs_best_fixed_pct": -0.019375561272269047,
+          "mean_vs_best_fixed_pct": -0.20462006159405455,
+          "win_rate": 0.5769230769230769
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "median_vs_best_fixed_pct": 0.15224368805908178,
+          "mean_vs_best_fixed_pct": 0.16053501028279443,
+          "win_rate": 0.07692307692307693
+        },
+        {
+          "algorithm": "AdaHedge",
+          "median_vs_best_fixed_pct": 0.04233972298155325,
+          "mean_vs_best_fixed_pct": 0.050063436851279966,
+          "win_rate": 0.38461538461538464
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "median_vs_best_fixed_pct": -12.410933782452576,
+          "mean_vs_best_fixed_pct": -18.050603230253333,
+          "win_rate": 1.0
+        },
+        {
+          "algorithm": "ML-Poly",
+          "median_vs_best_fixed_pct": 0.0992732956312388,
+          "mean_vs_best_fixed_pct": 0.3032557003840551,
+          "win_rate": 0.0
+        }
+      ],
+      "best_fixed_expert_counts": {
+        "RidgeLag_100.0": 14,
+        "RidgeLag_0.1": 7,
+        "SeasonalNaive_168": 3,
+        "LastValue": 1,
+        "Median_24": 1
+      }
+    }
+  ]
+}

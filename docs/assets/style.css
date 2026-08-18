@@ -1,0 +1,379 @@
+/* Expert Advise — GitHub Pages 共通スタイル */
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f8fa;
+  --bg-card: #ffffff;
+  --fg: #1f2328;
+  --fg-muted: #59636e;
+  --border: #d1d9e0;
+  --accent: #1565c0;
+  --accent-soft: #e3f0ff;
+  --good: #1b7f4b;
+  --good-soft: #e6f4ec;
+  --bad: #b3261e;
+  --bad-soft: #fdecea;
+  --warn-soft: #fff6e0;
+  --warn-border: #e8b93b;
+  --code-bg: #f6f8fa;
+  --shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
+  --maxw: 860px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --bg-soft: #161b22;
+    --bg-card: #161b22;
+    --fg: #e6edf3;
+    --fg-muted: #9198a1;
+    --border: #30363d;
+    --accent: #6cb1ff;
+    --accent-soft: #14273f;
+    --good: #58d68d;
+    --good-soft: #12261a;
+    --bad: #ff8a80;
+    --bad-soft: #2c1512;
+    --warn-soft: #2b2312;
+    --warn-border: #9c7b1f;
+    --code-bg: #161b22;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+    "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+  line-height: 1.85;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------------- ヘッダ / ナビ ---------------- */
+
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: saturate(180%) blur(6px);
+}
+
+.site-header .inner {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0.6rem 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.1rem;
+}
+
+.site-header .brand {
+  font-weight: 700;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.98rem;
+  white-space: nowrap;
+}
+
+.site-header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.9rem;
+}
+
+.site-header nav a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  padding: 0.15rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+.site-header nav a:hover { color: var(--accent); }
+.site-header nav a[aria-current="page"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------------- レイアウト ---------------- */
+
+main {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 2rem 1.1rem 5rem;
+}
+
+h1 {
+  font-size: 1.9rem;
+  line-height: 1.4;
+  margin: 0.4rem 0 0.6rem;
+  letter-spacing: 0.01em;
+}
+
+h2 {
+  font-size: 1.35rem;
+  margin: 3rem 0 0.9rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: 4rem;
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin: 2rem 0 0.6rem;
+  scroll-margin-top: 4rem;
+}
+
+p { margin: 0.9rem 0; }
+
+a { color: var(--accent); }
+
+.lede {
+  font-size: 1.05rem;
+  color: var(--fg-muted);
+  margin-bottom: 1.6rem;
+}
+
+ul, ol { padding-left: 1.4rem; }
+li { margin: 0.35rem 0; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+/* ---------------- 図 ---------------- */
+
+figure {
+  margin: 1.6rem 0;
+  padding: 0;
+}
+
+figure img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+figcaption {
+  font-size: 0.86rem;
+  color: var(--fg-muted);
+  margin-top: 0.55rem;
+  line-height: 1.7;
+}
+
+.svg-figure {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem;
+  overflow-x: auto;
+}
+
+.svg-figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+
+/* ---------------- 表 ---------------- */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.4rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+  min-width: 480px;
+}
+
+caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 0.86rem;
+  color: var(--fg-muted);
+  padding: 0.7rem 0.9rem 0.4rem;
+}
+
+th, td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  background: var(--bg-soft);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--bg-soft); }
+
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.win { color: var(--good); font-weight: 600; }
+.lose { color: var(--fg-muted); }
+.row-highlight { background: var(--good-soft); }
+.row-highlight:hover { background: var(--good-soft); }
+
+/* ---------------- 補助ブロック ---------------- */
+
+.callout {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.9rem 1.1rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.5rem 0;
+}
+
+.callout.good { border-left-color: var(--good); background: var(--good-soft); }
+.callout.bad { border-left-color: var(--bad); background: var(--bad-soft); }
+.callout.warn { border-left-color: var(--warn-border); background: var(--warn-soft); }
+.callout p:first-child { margin-top: 0; }
+.callout p:last-child { margin-bottom: 0; }
+.callout .label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card h3 { margin: 0 0 0.4rem; font-size: 1.02rem; color: var(--accent); }
+.card p { margin: 0; font-size: 0.88rem; color: var(--fg-muted); line-height: 1.7; }
+
+.keypoints {
+  list-style: none;
+  padding: 0;
+  margin: 1.6rem 0;
+  counter-reset: kp;
+}
+
+.keypoints li {
+  position: relative;
+  padding: 0.7rem 0.9rem 0.7rem 3rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+  background: var(--bg-card);
+}
+
+.keypoints li::before {
+  counter-increment: kp;
+  content: counter(kp);
+  position: absolute;
+  left: 0.9rem;
+  top: 0.75rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+code, kbd, pre {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+code {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.08em 0.35em;
+  font-size: 0.87em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+
+pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+.term {
+  border-bottom: 1px dotted var(--fg-muted);
+  cursor: help;
+  font-weight: 600;
+}
+
+details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin: 1.3rem 0;
+  background: var(--bg-soft);
+}
+
+summary { cursor: pointer; font-weight: 600; font-size: 0.94rem; }
+details[open] summary { margin-bottom: 0.6rem; }
+
+.footnote { font-size: 0.86rem; color: var(--fg-muted); }
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 1.6rem 1.1rem 3rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.site-footer .inner { max-width: var(--maxw); margin: 0 auto; }
+
+/* 数式が横に溢れたときにスクロールさせる */
+mjx-container[jax="CHTML"][display="true"] { overflow-x: auto; overflow-y: hidden; }
+
+@media (max-width: 640px) {
+  body { font-size: 15.5px; line-height: 1.8; }
+  h1 { font-size: 1.55rem; }
+  h2 { font-size: 1.2rem; }
+  main { padding: 1.4rem 0.9rem 4rem; }
+}

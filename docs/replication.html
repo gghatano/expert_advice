@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>追試結果 — Expert Advise</title>
+<meta name="description" content="Expert Advice が実際に効くデータ・タスクを、人工データ・M4・ETTh1・COVID-19 期の電力需要の 4 つで再現した結果。">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">Expert Advise</a>
+    <nav>
+      <a href="index.html">ホーム</a>
+      <a href="algorithm.html">アルゴリズム解説</a>
+      <a href="experiment.html">実験レポート</a>
+      <a href="replication.html" aria-current="page">追試結果</a>
+      <a href="https://github.com/gghatano/expert_advice">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<h1>追試結果：Expert Advice はどこで効くのか</h1>
+
+<p class="lede">
+<a href="experiment.html">実験レポート</a>で「効かない条件」を確認したので、
+今度は逆に<strong>効く条件</strong>を探しました。仮説は 2 つ。
+<strong>(A) 勝つべき Expert が時間とともに入れ替わる</strong>、
+<strong>(B) 強さが同程度で外し方の違う Expert が複数いる</strong>。
+これを人工データ 1 つと実データ 3 つで検証します。
+</p>
+
+<div class="table-wrap">
+<table>
+  <caption>4 つの追試の位置づけ</caption>
+  <thead>
+    <tr><th>追試</th><th>データ</th><th>検証したい仮説</th><th>結果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><a href="#exp1">追試 1</a></td><td>合成レジーム切替</td><td>(A) 純粋な形で</td>
+        <td class="win">最良固定 Expert 比 <!-- AUTO:exp1_headline -->−29.8%<!-- /AUTO:exp1_headline --></td></tr>
+    <tr><td><a href="#exp2">追試 2</a></td><td>M4 Hourly（414 系列）</td><td>(B) 系列間の多様性</td>
+        <td class="win"><!-- AUTO:exp2_headline -->−22.9%<!-- /AUTO:exp2_headline -->、系列の <!-- AUTO:exp2_headline_win -->62%<!-- /AUTO:exp2_headline_win --> で勝利</td></tr>
+    <tr><td><a href="#exp3">追試 3</a></td><td>ETTh1（7 変数）</td><td>(A)+(B) 実データで</td>
+        <td class="win"><!-- AUTO:exp3_headline -->7 変数すべてで勝利<!-- /AUTO:exp3_headline --></td></tr>
+    <tr><td><a href="#exp4">追試 4</a></td><td>COVID-19 期の電力需要</td><td>(A) 実世界の構造変化</td>
+        <td class="win"><!-- AUTO:exp4_headline -->4 か国すべてで −40% 以上<!-- /AUTO:exp4_headline --></td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<h2 id="exp1">追試 1：レジーム切替（人工データ）</h2>
+
+<p>
+まず、仮説 (A) をいちばん純粋な形で見ます。生成過程を途中で 4 回切り替えた系列を作り、
+<strong>各区間で「正解の Expert」が入れ替わる</strong>ようにしました。
+Expert は性格のはっきり違う 8 本だけに絞り、重みの動きが読めるようにしています。
+</p>
+
+<figure>
+  <img src="figures/exp1_regime/series.png" alt="4 つのレジームからなる合成時系列">
+  <figcaption>
+    2,000 時点ずつ 4 つのレジームを連結した系列。各区間の上に、その区間で
+    実際に最良だった Expert を示しています。狙いどおり 4 区間で 4 種類の勝者に分かれました。
+  </figcaption>
+</figure>
+
+<!-- AUTO:exp1_regimes -->
+<div class="table-wrap">
+<table>
+  <caption>レジームごとの最良 Expert（合成データ）。4 区間で 4 種類の勝者に分かれています。</caption>
+  <thead><tr><th>レジーム</th><th>その区間で最良の Expert</th><th class="num">その MAE</th><th class="num">LastValue の MAE</th></tr></thead>
+  <tbody>
+      <tr><td>A: strong daily cycle</td><td><strong>SeasonalProfile</strong></td><td class="num">0.975</td><td class="num">5.075</td></tr>
+      <tr><td>B: random walk</td><td><strong>LastValue</strong></td><td class="num">2.397</td><td class="num">2.397</td></tr>
+      <tr><td>C: noisy flat level</td><td><strong>SMA_24</strong></td><td class="num">14.358</td><td class="num">19.773</td></tr>
+      <tr><td>D: steep trend</td><td><strong>Drift_24</strong></td><td class="num">2.604</td><td class="num">3.384</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">全区間を通した最良の固定 Expert は LastValue ですが、どの区間でも一番にはなれていません。これが「乗り換えれば勝てる」余地です。</p>
+<!-- /AUTO:exp1_regimes -->
+
+<h3>結果</h3>
+
+<!-- AUTO:exp1_table -->
+<div class="table-wrap">
+<table>
+  <caption>レジーム切替データ（7,664 時点、Expert 8 本）の平均絶対誤差。</caption>
+  <thead><tr><th>アルゴリズム</th><th class="num">平均 MAE</th><th class="num">最良固定 Expert 比</th></tr></thead>
+  <tbody>
+      <tr><td>Equal Weight</td><td class="num">22.471</td><td class="num lose">+189.2%</td></tr>
+      <tr><td>Follow the Leader</td><td class="num">7.776</td><td class="num lose">+0.1%</td></tr>
+      <tr><td>Hedge (tuned eta)</td><td class="num">7.763</td><td class="num win">-0.1%</td></tr>
+      <tr><td>Meta-eta Hedge</td><td class="num">7.777</td><td class="num lose">+0.1%</td></tr>
+      <tr><td>AdaHedge</td><td class="num">7.774</td><td class="num lose">+0.1%</td></tr>
+      <tr class="row-highlight"><td>Fixed-Share</td><td class="num">5.453</td><td class="num win">-29.8%</td></tr>
+      <tr><td>ML-Poly</td><td class="num">7.827</td><td class="num lose">+0.7%</td></tr>
+      <tr><td>— 最良固定 Expert（LastValue、事後）</td><td class="num">7.770</td><td class="num">0.0%</td></tr>
+      <tr><td>— 切り替えオラクル（区間ごとに最良、事後）</td><td class="num">5.264</td><td class="num win">-32.3%</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">Fixed-Share は切り替えオラクル（事後に区間ごとの最良を選べた場合）にかなり近いところまで到達しています。</p>
+<!-- /AUTO:exp1_table -->
+
+<figure>
+  <img src="figures/exp1_regime/regret.png" alt="最良固定 Expert に対する累積後悔の推移">
+  <figcaption>
+    累積後悔（regret）の推移。0 の線が「事後に選べる最良の単一 Expert」で、
+    <strong>下に行くほど良い</strong>結果です。点線はレジームの境界。
+    Hedge 系は第 2 レジームの途中で 0 に戻り、<strong>そのあと一切動きません</strong>
+    — 最良固定 Expert に張り付いてしまうからです。Fixed-Share だけがレジームごとに
+    さらに下へ伸びていきます。等重み平均は桁が違うため除いています。
+  </figcaption>
+</figure>
+
+<p>
+なぜこうなるのかは、重みの動きを見ると一目で分かります。
+</p>
+
+<figure>
+  <img src="figures/exp1_regime/weights_hedge.png" alt="Hedge の重み推移">
+  <figcaption>
+    <strong>Hedge</strong>：最初のレジームで SeasonalProfile に張り付き、
+    第 2 レジームで LastValue に乗り換えたあとは、レジームが変わっても<strong>動きません</strong>。
+    累積損失の差が開ききって、他の Expert の重みが復帰不可能な水準まで落ちているためです。
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="figures/exp1_regime/weights_fixed_share.png" alt="Fixed-Share の重み推移">
+  <figcaption>
+    <strong>Fixed-Share</strong>：レジーム境界（点線）ごとに主役が
+    SeasonalProfile → LastValue → SMA_24 → Drift_24 と<strong>正確に入れ替わっています</strong>。
+    重みに下限 \(\alpha/N\) があるので、負けていた Expert が数十ステップで復帰できます。
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="figures/exp1_regime/bars.png" alt="レジーム切替データでの平均絶対誤差">
+  <figcaption>
+    平均絶対誤差の比較。黒破線が最良固定 Expert、橙点線が
+    「区間ごとに最良の Expert を選べた場合」（切り替えオラクル）。
+    Fixed-Share はオラクルにかなり近いところまで到達しています。
+  </figcaption>
+</figure>
+
+<h3 id="alpha">唯一のつまみ α はどれくらい敏感か</h3>
+
+<figure>
+  <img src="figures/exp1_regime/alpha_sensitivity.png" alt="Fixed-Share の α に対する感度">
+  <figcaption>
+    \(\alpha\) を変えたときの平均絶対誤差。左端の点は \(\alpha = 0\)、すなわち素の Hedge です。
+    <strong>\(10^{-5}\) から \(10^{-2}\) までの 3 桁にわたってほぼ平坦</strong>で、
+    その範囲ならどこを選んでも切り替えオラクルに近い性能が出ます。
+    大きすぎる（0.1 以上）と等重み平均に近づいて悪化します。
+    チューニングに神経質になる必要はない、というのが実用上の結論です。
+  </figcaption>
+</figure>
+
+<hr>
+
+<h2 id="exp2">追試 2：M4 Hourly（実データ 414 系列）</h2>
+
+<p>
+次は仮説 (B)。M4 コンペティションの hourly 部門 414 系列を、1 系列ずつ独立に
+1 ステップ先オンライン予測で解きます。系列ごとにスケールが違うので、
+各系列の助走区間における naive 予測 MAE で割った <strong>scaled MAE</strong> で揃えました。
+</p>
+
+<figure>
+  <img src="figures/exp2_m4/winner_hist.png" alt="系列ごとの最良 Expert の分布">
+  <figcaption>
+    「その系列でいちばん良かった Expert」の集計。
+    <!-- AUTO:exp2_winners -->414 系列に対して <strong>11 種類</strong>の Expert が勝者になり、最多のものでも全体の 33% にとどまります<!-- /AUTO:exp2_winners -->。
+    つまり <strong>事前に 1 本選ぶ戦略は、どれを選んでも多くの系列で外す</strong>ことになります。
+  </figcaption>
+</figure>
+
+<p>
+そこで比較対象を実務的なものに変えます。「事後に分かる最良の 1 本」ではなく、
+<strong>全系列の平均成績で最良だった Expert を事前に 1 本選んで、全系列に適用する</strong>
+という、実際にやりそうな戦略です。
+</p>
+
+<!-- AUTO:exp2_table -->
+<div class="table-wrap">
+<table>
+  <caption>M4 Hourly 414 系列、1 ステップ先オンライン予測。指標は各系列の naive MAE で割った scaled MAE（小さいほど良い）。</caption>
+  <thead><tr><th>アルゴリズム</th><th class="num">scaled MAE</th><th class="num">事前選択比</th><th class="num">勝率</th></tr></thead>
+  <tbody>
+      <tr><td>Equal Weight</td><td class="num">2.1869</td><td class="num lose">+303.1%</td><td class="num">1%</td></tr>
+      <tr><td>Follow the Leader</td><td class="num">0.4505</td><td class="num win">-17.0%</td><td class="num">44%</td></tr>
+      <tr><td>Hedge (tuned eta)</td><td class="num">0.4389</td><td class="num win">-19.1%</td><td class="num">59%</td></tr>
+      <tr><td>Meta-eta Hedge</td><td class="num">0.4541</td><td class="num win">-16.3%</td><td class="num">40%</td></tr>
+      <tr><td>AdaHedge</td><td class="num">0.4452</td><td class="num win">-17.9%</td><td class="num">51%</td></tr>
+      <tr class="row-highlight"><td>Fixed-Share</td><td class="num">0.4182</td><td class="num win">-22.9%</td><td class="num">62%</td></tr>
+      <tr><td>ML-Poly</td><td class="num">0.4501</td><td class="num win">-17.0%</td><td class="num">43%</td></tr>
+      <tr><td>— 事前に選んだ最良の 1 本（RidgeLag_0.1）</td><td class="num">0.5425</td><td class="num">0.0%</td><td class="num">—</td></tr>
+      <tr><td>— 系列ごとに最良を選べた場合（事後オラクル）</td><td class="num">0.4424</td><td class="num win">-18.5%</td><td class="num">—</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">Fixed-Share は事後オラクル（系列ごとに最良の 1 本を選べた場合）も下回りました。系列内でも重みを動かせるためです。</p>
+<!-- /AUTO:exp2_table -->
+
+<figure>
+  <img src="figures/exp2_m4/bars.png" alt="M4 Hourly におけるアルゴリズム比較">
+  <figcaption>
+    黒破線が「事前に選んだ最良の 1 本」、橙点線が「系列ごとに最良を選べた場合」（事後オラクル）。
+    すべての集約アルゴリズムが黒破線を下回り、Fixed-Share は<strong>事後オラクルすら下回りました</strong>
+    — 系列内でも重みを動かせるためです。
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="figures/exp2_m4/win_rate.png" alt="系列ごとの勝率">
+  <figcaption>
+    414 系列のうち何割で「事前に選んだ最良の 1 本」に勝ったか。
+    平均値だけでなく系列単位で見ても優位であることが確認できます。
+  </figcaption>
+</figure>
+
+<hr>
+
+<h2 id="exp3">追試 3：ETTh1（実データ・翌日予測）</h2>
+
+<p>
+ETT（Electricity Transformer Temperature）データセットの 1 時間粒度版、
+2016-07 から 2018-06 までの 17,420 時点・7 変数を、
+<strong>翌日（24 時間先）予測</strong>で評価しました。最初の約 6 か月を助走・学習に使っています。
+</p>
+
+<!-- AUTO:exp3_table -->
+<div class="table-wrap">
+<table>
+  <caption>ETTh1 の 7 変数、24 時間先予測。数値は最良固定 Expert に対する MAE の差。負が勝ち。</caption>
+  <thead><tr><th>変数</th><th>最良固定 Expert</th><th class="num">その MAE</th><th class="num">Meta-η Hedge</th><th class="num">AdaHedge</th><th class="num">ML-Poly</th><th class="num">Fixed-Share</th></tr></thead>
+  <tbody>
+      <tr><td><strong>HUFL</strong></td><td>RidgeLag_0.1</td><td class="num">3.040</td><td class="num lose">+0.1%</td><td class="num win">-0.2%</td><td class="num lose">+0.0%</td><td class="num win">-33.7%</td></tr>
+      <tr><td><strong>HULL</strong></td><td>EMA_0.7</td><td class="num">0.840</td><td class="num win">-0.0%</td><td class="num win">-0.1%</td><td class="num lose">+0.0%</td><td class="num win">-21.5%</td></tr>
+      <tr><td><strong>MUFL</strong></td><td>EMA_0.9</td><td class="num">2.888</td><td class="num lose">+0.1%</td><td class="num lose">+0.0%</td><td class="num lose">+0.1%</td><td class="num win">-36.4%</td></tr>
+      <tr><td><strong>MULL</strong></td><td>RidgeLag_0.1</td><td class="num">0.723</td><td class="num lose">+0.0%</td><td class="num win">-0.1%</td><td class="num lose">+0.0%</td><td class="num win">-21.0%</td></tr>
+      <tr><td><strong>LUFL</strong></td><td>EMA_0.9</td><td class="num">0.529</td><td class="num lose">+0.1%</td><td class="num win">-0.3%</td><td class="num lose">+0.1%</td><td class="num win">-32.1%</td></tr>
+      <tr><td><strong>LULL</strong></td><td>EMA_0.5</td><td class="num">0.202</td><td class="num lose">+0.1%</td><td class="num win">-0.2%</td><td class="num lose">+0.0%</td><td class="num win">-27.1%</td></tr>
+      <tr><td><strong>OT</strong></td><td>RidgeLag_100.0</td><td class="num">1.909</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num lose">+0.1%</td><td class="num win">-43.5%</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">変数によって最良 Expert が Ridge 系だったり EMA 系だったりと入れ替わります。</p>
+<!-- /AUTO:exp3_table -->
+
+<figure>
+  <img src="figures/exp3_etth1/per_column.png" alt="ETTh1 の変数ごとの結果">
+  <figcaption>
+    変数ごとの「最良固定 Expert に対する差」。0 より下が勝ち。
+    Fixed-Share は 7 変数すべてで下回りました。
+    変数によって最良の Expert が Ridge だったり EMA だったりと入れ替わる点も、
+    仮説 (B) の裏付けになっています。
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="figures/exp3_etth1/regret_ot.png" alt="ETTh1 OT 列の累積後悔">
+  <figcaption>
+    油温（OT）の累積後悔。実データでも人工データと同じ形 —
+    Hedge 系は 0 付近で止まり、Fixed-Share だけが下方向に伸び続けます。
+  </figcaption>
+</figure>
+
+<hr>
+
+<h2 id="exp4">追試 4：COVID-19 ロックダウン期の電力需要</h2>
+
+<p>
+最後に、実世界で起きた大規模な構造変化です。2020 年 3 月のロックダウンで
+欧州各国の電力需要は水準も日内形状も一変しました。文献では、この時期に
+静的なモデルが大きく劣化し、適応的な手法が有効だったと報告されています。
+</p>
+
+<p>
+Open Power System Data の 1 時間粒度実測需要（ドイツ・スペイン・フランス・イタリア）を使い、
+<strong>Expert の学習は 2015〜2018 年まで</strong>（COVID を一切知らない状態）、
+評価は 2019-01 以降の翌日予測としました。
+</p>
+
+<figure>
+  <img src="figures/exp4_covid/load_series.png" alt="フランスの電力需要とロックダウン">
+  <figcaption>フランスの時間別電力需要。赤線が 2020-03-16（ロックダウン開始週）。</figcaption>
+</figure>
+
+<h3>結果</h3>
+
+<!-- AUTO:exp4_table -->
+<div class="table-wrap">
+<table>
+  <caption>2020-03-16 以降（ロックダウン期）の翌日予測 MAE [MW]。数値は「ロックダウン前の実績で選んだ 1 本」に対する差。負が勝ち。</caption>
+  <thead><tr><th>国</th><th>事前に選ばれた Expert</th><th class="num">その MAE [MW]</th><th class="num">Meta-η Hedge</th><th class="num">AdaHedge</th><th class="num">ML-Poly</th><th class="num">Fixed-Share</th></tr></thead>
+  <tbody>
+      <tr><td><strong>Germany</strong></td><td>RidgeLag_100.0</td><td class="num">2,079</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num win">-42.6%</td></tr>
+      <tr><td><strong>Spain</strong></td><td>RidgeLag_100.0</td><td class="num">931</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num win">-39.7%</td></tr>
+      <tr><td><strong>France</strong></td><td>RidgeLag_100.0</td><td class="num">1,828</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num win">-46.4%</td></tr>
+      <tr><td><strong>Italy</strong></td><td>RidgeLag_100.0</td><td class="num">1,764</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num lose">+0.0%</td><td class="num win">-48.0%</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">Hedge 系がすべて ±0.0% なのは、重みが事実上その 1 本に集中しきっているためです。</p>
+<!-- /AUTO:exp4_table -->
+
+<figure>
+  <img src="figures/exp4_covid/rolling_mae.png" alt="14 日移動平均の予測誤差">
+  <figcaption>
+    14 日移動平均の予測誤差。黒破線が「ロックダウン前の実績で選んだ 1 本」で、
+    Meta-η Hedge（青）はこれとほぼ完全に重なっています（Hedge 系はすべて同様）。
+    Fixed-Share（赤）だけが一貫して下を走ります。
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="figures/exp4_covid/weights.png" alt="Fixed-Share の重み配分の推移">
+  <figcaption>
+    Fixed-Share の重み配分。ロックダウン（赤破線）の前後で配分が組み替わっています。
+  </figcaption>
+</figure>
+
+<h3>正直な報告：期待した現象は再現しなかった</h3>
+
+<div class="callout warn">
+  <span class="label">再現しなかったこと</span>
+  <p>
+    「COVID でモデルが壊れ、適応手法だけが生き残った」という筋書きを期待していましたが、
+    <strong>この Expert 群では再現しませんでした</strong>。季節をそろえて
+    （3/16〜6/30 の 2019 年と 2020 年を）比べると、事前に選んだ Expert の誤差はむしろ
+    <strong>減っています</strong>。ロックダウン期は需要水準そのものが下がり、
+    予測しやすくなった効果の方が大きかったためです。
+  </p>
+</div>
+
+<figure>
+  <img src="figures/exp4_covid/seasonal_matched.png" alt="季節をそろえた 2019 年と 2020 年の比較">
+  <figcaption>
+    季節をそろえた比較（3/16〜6/30）。ほとんどの手法で 2020 年の方が誤差が小さく、
+    「COVID で壊れた」という単純な図式にはなりません。
+    ただしフランスでは Fixed-Share の改善幅（−27%）が基準（−17%）より大きく、
+    適応の価値がこの時期に<strong>相対的に増した</strong>ことは読み取れます。
+  </figcaption>
+</figure>
+
+<h3>では、何が壊れたのか</h3>
+
+<p>
+Expert を個別に見ると、原因ははっきりします。
+</p>
+
+<figure>
+  <img src="figures/exp4_covid/expert_breakage.png" alt="Expert ごとの 2019 年と 2020 年の誤差比較">
+  <figcaption>
+    Expert ごとの季節そろえ比較（フランス）。
+    <strong>暦だけを見る事前学習モデル（SeasonalProfile）だけが +77% 悪化</strong>し、
+    直近の観測値を使う Expert はすべて改善しています。
+  </figcaption>
+</figure>
+
+<!-- AUTO:exp4_experts -->
+<div class="table-wrap">
+<table>
+  <caption>France：季節をそろえた Expert 単体の比較（3/16〜6/30 の MAE [MW]）。</caption>
+  <thead><tr><th>Expert</th><th class="num">2019 年春</th><th class="num">2020 年春（ロックダウン）</th><th class="num">変化</th></tr></thead>
+  <tbody>
+      <tr class="row-highlight"><td>SeasonalProfile</td><td class="num">6,281</td><td class="num">11,122</td><td class="num lose">+77.1%</td></tr>
+      <tr><td>SeasonalNaive_168</td><td class="num">3,055</td><td class="num">2,850</td><td class="num win">-6.7%</td></tr>
+      <tr><td>SeasonalNaive_24</td><td class="num">3,111</td><td class="num">2,297</td><td class="num win">-26.2%</td></tr>
+      <tr><td>RidgeLag_100.0</td><td class="num">2,340</td><td class="num">1,942</td><td class="num win">-17.0%</td></tr>
+      <tr><td>LastValue</td><td class="num">3,111</td><td class="num">2,297</td><td class="num win">-26.2%</td></tr>
+      <tr><td>SMA_24</td><td class="num">5,219</td><td class="num">4,226</td><td class="num win">-19.0%</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">直近の観測値を使わない SeasonalProfile だけが大きく悪化しています。集約の価値は、こうした壊れたモデルを自動的に切り捨てられる点にあります。</p>
+<!-- /AUTO:exp4_experts -->
+
+<div class="callout good">
+  <span class="label">わかったこと</span>
+  <p>
+    壊れたのは <strong>「曜日 × 時刻」の平均プロファイルのように、過去の実績だけで作り、
+    直近の観測を見ないモデル</strong>でした。文献で報告された劣化も、まさにこの種の
+    （気象と暦を説明変数にする）モデルで起きたものです。
+  </p>
+  <p>
+    一方、本プロジェクトの Expert はほとんどが直近ラグを使うため、
+    <strong>個々の Expert が勝手に新しい水準へ追随してしまい</strong>、
+    集約が救うべき「壊れたモデル」がそもそも少なかった、というのが真相です。
+    集約の価値は「壊れたモデルを切り捨てられること」にあり、その意味では
+    SeasonalProfile を捨てられた点で確かに機能しています。
+  </p>
+</div>
+
+<hr>
+
+<h2>まとめ：効く条件チェックリスト</h2>
+
+<p>4 つの追試から言えることを、実務で使える形にまとめます。</p>
+
+<ol class="keypoints">
+  <li>
+    <strong>勝つべき Expert が入れ替わるか？</strong><br>
+    入れ替わるなら Fixed-Share が効きます。入れ替わらないなら、どの集約手法を使っても
+    最良の 1 本と同じ結果にしかなりません。まず「区間ごとの最良 Expert」を集計して確認してください。
+  </li>
+  <li>
+    <strong>Expert の強さは同程度か？</strong><br>
+    1 本だけ突出して強い構成では利得が出ません。同じ family のパラメータ違いを並べるより、
+    <strong>外し方が違うモデル</strong>（直近ラグ型・暦型・トレンド型）を混ぜる方が効きます。
+  </li>
+  <li>
+    <strong>タスクは十分難しいか？</strong><br>
+    1 ステップ先予測は「直近値」がほぼ正解で、工夫の余地がありません。
+    翌日予測など、Expert の得意・不得意が分かれるホライズンを選んでください。
+  </li>
+  <li>
+    <strong>重みが過去に引きずられていないか？</strong><br>
+    Hedge の重みは累積損失だけで決まるため、時間が経つほど動かなくなります。
+    Fixed-Share の \(\alpha\)（\(10^{-5}\)〜\(10^{-2}\) の広い範囲で有効）を入れるだけで解決します。
+  </li>
+</ol>
+
+<h2>再現方法</h2>
+
+<pre><code>uv sync --all-extras
+uv run python scripts/download_data.py        # M4 / ETTh1 / OPSD / UCI を取得
+
+uv run python scripts/experiments/exp1_regime.py
+uv run python scripts/experiments/exp2_m4.py
+uv run python scripts/experiments/exp3_etth1.py
+uv run python scripts/experiments/exp4_covid.py
+
+uv run python scripts/build_site.py           # このページの表を更新</code></pre>
+
+<p class="footnote">
+使用データ：
+<a href="https://github.com/Mcompetitions/M4-methods">M4 Competition</a>（M4 Hourly）、
+<a href="https://github.com/zhouhaoyi/ETDataset">ETDataset</a>（ETTh1）、
+<a href="https://data.open-power-system-data.org/time_series/">Open Power System Data</a>（1 時間粒度実測需要）、
+<a href="https://archive.ics.uci.edu/dataset/321/electricityloaddiagrams20112014">UCI Electricity Load Diagrams 2011-2014</a>。
+</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    数値は <code>docs/results/*.json</code> から自動生成しています。
+    ソースコードは <a href="https://github.com/gghatano/expert_advice">GitHub リポジトリ</a>にあります。
+  </div>
+</footer>
+
+</body>
+</html>

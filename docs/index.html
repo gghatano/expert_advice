@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expert Advise — 予測を混ぜて当てる</title>
+<meta name="description" content="Prediction with Expert Advice を電力負荷予測に適用したプロジェクトの解説・実験レポート・追試結果。">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">Expert Advise</a>
+    <nav>
+      <a href="index.html" aria-current="page">ホーム</a>
+      <a href="algorithm.html">アルゴリズム解説</a>
+      <a href="experiment.html">実験レポート</a>
+      <a href="replication.html">追試結果</a>
+      <a href="https://github.com/gghatano/expert_advice">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<h1>たくさんの予測を、賢く混ぜる</h1>
+
+<p class="lede">
+30〜80 個の軽い予測器（Expert）を走らせ、当たっている Expert の重みを自動的に上げながら
+足し合わせる — <strong>Prediction with Expert Advice</strong> の枠組みを、電力負荷予測に適用した
+プロジェクトの記録です。理論の解説から、うまく行かなかった実験、そして
+<strong>何を変えたらうまく行ったのか</strong>までをまとめています。
+</p>
+
+<div class="callout">
+  <span class="label">このサイトの結論</span>
+  <p>
+    素朴な Hedge アルゴリズムは、<strong>原理的に「事後に選べる最良の 1 本」を超えられません</strong>。
+    実データで確かめたところ、まさにその通りの結果（+0.2%、つまり誤差）になりました。
+    一方、アルゴリズムを <strong>Fixed-Share</strong> に変えるだけで、同じデータ・同じ Expert 群で
+    <strong>最良の 1 本より <!-- AUTO:exp0_headline_range -->8〜12%<!-- /AUTO:exp0_headline_range --> 良く</strong>なり、系列の <!-- AUTO:exp0_headline_winrange -->96%〜100%<!-- /AUTO:exp0_headline_winrange --> で勝ちます。
+  </p>
+</div>
+
+<h2>3 分でわかる要点</h2>
+
+<ol class="keypoints">
+  <li>
+    <strong>Hedge は「最良の 1 本に追いつく」アルゴリズムであって、「それを超える」アルゴリズムではない。</strong><br>
+    絶対誤差（MAE）を損失に使う限り、理論的な保証は「最良の固定 Expert + 誤差」までです。
+    データが定常なら、最良 Expert は最初から最後まで同じ 1 本なので、Hedge にできることは何もありません。
+  </li>
+  <li>
+    <strong>効くのは「勝つべき Expert が入れ替わる」とき。</strong><br>
+    レジーム（生成過程）が変わる、系列ごとに性質が違う、といった状況では、
+    重みに下限を設けて追随できる <strong>Fixed-Share</strong> が最良の固定 Expert を大きく下回ります。
+    人工データで <strong><!-- AUTO:exp1_headline -->−29.8%<!-- /AUTO:exp1_headline --></strong>、M4 実データ 414 系列で <strong><!-- AUTO:exp2_headline -->−22.9%<!-- /AUTO:exp2_headline --></strong>。
+  </li>
+  <li>
+    <strong>タスクを難しくすると差が開く。</strong><br>
+    1 時間先予測は「直近値」がほぼ正解なので、どんな工夫も効きません。
+    翌日（24 時間先）予測にすると Expert の得意・不得意が分かれ、集約の利得が倍増します。
+  </li>
+</ol>
+
+<h2>実データで見た効果</h2>
+
+<figure>
+  <img src="figures/exp0_uci_baseline/settings_comparison.png"
+       alt="UCI 電力データにおける、最良固定 Expert に対する各アルゴリズムの改善率">
+  <figcaption>
+    UCI Electricity Load Diagrams（実データ・<!-- AUTO:exp0_nseries -->26<!-- /AUTO:exp0_nseries --> 系列）の中央値。0% の線が
+    「事後に選べる最良の単一 Expert」で、下に行くほど良い結果です。
+    左が本プロジェクトの既定設定（1 時間先予測）、右は予測ホライズンだけを翌日に変えたもの。
+    Hedge 系がほぼ 0%（＝集約した意味がない）に張り付くのに対し、Fixed-Share だけが明確に下回ります。
+    詳細は<a href="experiment.html">実験レポート</a>へ。
+  </figcaption>
+</figure>
+
+<h2>どこから読むか</h2>
+
+<div class="cards">
+  <a class="card" href="algorithm.html">
+    <h3>アルゴリズム解説</h3>
+    <p>予備知識なしで読めます。「重みを掛けて足すだけ」から始めて、後悔（regret）、学習率 η、
+      Fixed-Share までを図で説明します。</p>
+  </a>
+  <a class="card" href="experiment.html">
+    <h3>実験レポート</h3>
+    <p>本プロジェクトの既定設定を実データで再現し、なぜ結果が面白くならないのかを
+      3 つの原因に分解します。実装バグの報告も含みます。</p>
+  </a>
+  <a class="card" href="replication.html">
+    <h3>追試結果</h3>
+    <p>「Expert Advice が効くデータ・タスク」を 4 種類（人工データ / M4 / ETTh1 /
+      COVID-19 期の電力需要）で再現した結果です。</p>
+  </a>
+</div>
+
+<h2>再現方法</h2>
+
+<p>すべての図と数値は、リポジトリのスクリプトから再生成できます。</p>
+
+<pre><code># 依存関係
+uv sync --all-extras
+
+# データ取得（M4 / ETTh1 / OPSD / UCI）
+uv run python scripts/download_data.py
+
+# 実験（図は docs/figures/、数値は docs/results/ に出力）
+uv run python scripts/experiments/exp0_uci_baseline.py   # 既定設定の再現
+uv run python scripts/experiments/exp1_regime.py         # レジーム切替（人工データ）
+uv run python scripts/experiments/exp2_m4.py             # M4 Hourly 414 系列
+uv run python scripts/experiments/exp3_etth1.py          # ETTh1
+uv run python scripts/experiments/exp4_covid.py          # COVID-19 期の電力需要
+
+# このサイトの表を results/*.json から再生成
+uv run python scripts/build_site.py</code></pre>
+
+<p class="footnote">
+  このサイトに載っている数値は <code>docs/results/*.json</code> から自動生成されています。
+  実験を回し直して <code>build_site.py</code> を実行すれば、表は常に最新の結果と一致します。
+</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    Expert Advise — Prediction with Expert Advice for electricity load forecasting.
+    ソースコードと生データは <a href="https://github.com/gghatano/expert_advice">GitHub リポジトリ</a>にあります。
+  </div>
+</footer>
+
+</body>
+</html>

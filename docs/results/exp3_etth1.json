@@ -1,0 +1,699 @@
+{
+  "horizon": 24,
+  "warmup": 4320,
+  "columns": [
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "RidgeLag_0.1",
+        "index": 27,
+        "mean_loss": 3.039575276052146
+      },
+      "worst_expert_mean_loss": 15.070940212804492,
+      "expert_ranking": [
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 3.039575276052146
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 3.039581023814625
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 3.0396386057466764
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 3.040238611114048
+        },
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 3.0826032791088336
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 3.1032850378342256
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 3.1032850378342256
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 3.1032850378342256
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 3.1392221861916636
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 3.3964597592092245
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 3.9275450426448586,
+          "vs_best_fixed_pct": 29.21361328303812,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 3.0463343597358445,
+          "vs_best_fixed_pct": 0.2223693466962658,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 2.979412595742616,
+          "vs_best_fixed_pct": -1.9793120697991213,
+          "beats_best_fixed": true,
+          "eta": 0.001
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 3.042951572033837,
+          "vs_best_fixed_pct": 0.11107788671304672,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 3.0322792430301138,
+          "vs_best_fixed_pct": -0.2400346219261471,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 2.0165017494630746,
+          "vs_best_fixed_pct": -33.658436908917665,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 3.0402050221248014,
+          "vs_best_fixed_pct": 0.020718225918495002,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "HUFL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "EMA_0.7",
+        "index": 21,
+        "mean_loss": 0.8404821329266854
+      },
+      "worst_expert_mean_loss": 2.300072785225707,
+      "expert_ranking": [
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 0.8404821329266854
+        },
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 0.8408975930201744
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 0.8409110109691333
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 0.8410452881563808
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 0.8424150466590169
+        },
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 0.8512670888729992
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 0.8551678397239275
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 0.8630716778690578
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 0.8630716778690578
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 0.8630716778690578
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 0.8807596776554703,
+          "vs_best_fixed_pct": 4.792195235433785,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 0.8411047450403101,
+          "vs_best_fixed_pct": 0.07407797134921339,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 0.8151049326321531,
+          "vs_best_fixed_pct": -3.019362256537809,
+          "beats_best_fixed": true,
+          "eta": 0.003
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 0.8402891096619582,
+          "vs_best_fixed_pct": -0.022965778469913142,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 0.8396131293301535,
+          "vs_best_fixed_pct": -0.10339346459464371,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 0.6599397610059228,
+          "vs_best_fixed_pct": -21.480810221638727,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 0.8405949632428563,
+          "vs_best_fixed_pct": 0.013424475280401122,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "HULL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "EMA_0.9",
+        "index": 22,
+        "mean_loss": 2.8876793883244525
+      },
+      "worst_expert_mean_loss": 14.89272003413203,
+      "expert_ranking": [
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 2.8876793883244525
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 2.9046464122513322
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 2.9046464122513322
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 2.9046464122513322
+        },
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 2.9466393647850073
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 2.9466407025455537
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 2.94665427201151
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 2.9468338600203996
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 2.9502420824941544
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 3.211577038381927
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 3.7947221110411316,
+          "vs_best_fixed_pct": 31.41078356496431,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 2.8901405341709756,
+          "vs_best_fixed_pct": 0.0852291932571913,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 2.8067144448714747,
+          "vs_best_fixed_pct": -2.803806536845383,
+          "beats_best_fixed": true,
+          "eta": 0.001
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 2.889889154563717,
+          "vs_best_fixed_pct": 0.07652394681345857,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 2.8883866512969227,
+          "vs_best_fixed_pct": 0.024492434143827846,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 1.8357381368710253,
+          "vs_best_fixed_pct": -36.42860269414486,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 2.8901139843126673,
+          "vs_best_fixed_pct": 0.08430977476441653,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "MUFL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "RidgeLag_0.1",
+        "index": 27,
+        "mean_loss": 0.7230397200227379
+      },
+      "worst_expert_mean_loss": 1.9527878805893355,
+      "expert_ranking": [
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 0.7230397200227379
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 0.7230553274034776
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 0.7232118678939313
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 0.7248205838447436
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 0.7260579887928014
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 0.7368470435242902
+        },
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 0.7376523847707768
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 0.7492896193868787
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 0.7492896193868787
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 0.7492896193868787
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 0.7609507124627239,
+          "vs_best_fixed_pct": 5.243279364900433,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 0.7237720557708699,
+          "vs_best_fixed_pct": 0.10128568705865827,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 0.7055200919570024,
+          "vs_best_fixed_pct": -2.4230519542113855,
+          "beats_best_fixed": true,
+          "eta": 0.003
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 0.7232753536925832,
+          "vs_best_fixed_pct": 0.03258931194512365,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 0.7221531342521242,
+          "vs_best_fixed_pct": -0.12261923460937149,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 0.5712348566366295,
+          "vs_best_fixed_pct": -20.995369850681843,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 0.723232967138543,
+          "vs_best_fixed_pct": 0.026727040085581133,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "MULL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "EMA_0.9",
+        "index": 22,
+        "mean_loss": 0.528744445221963
+      },
+      "worst_expert_mean_loss": 1.495943011681821,
+      "expert_ranking": [
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 0.528744445221963
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 0.5310191142191691
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 0.5329999255497037
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 0.5329999255497037
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 0.5329999255497037
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 0.5515368886667765
+        },
+        {
+          "name": "SeasonalNaive_48",
+          "mean_loss": 0.5627342745365987
+        },
+        {
+          "name": "EMA_0.3",
+          "mean_loss": 0.6019017321849403
+        },
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 0.6064758987232144
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 0.6064873604310689
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 0.5841681827031575,
+          "vs_best_fixed_pct": 10.482140849333762,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 0.5298945124770763,
+          "vs_best_fixed_pct": 0.2175090945174019,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 0.5155813698485404,
+          "vs_best_fixed_pct": -2.4894966731795694,
+          "beats_best_fixed": true,
+          "eta": 0.01
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 0.5294170461453078,
+          "vs_best_fixed_pct": 0.12720718476059173,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 0.5271112515402117,
+          "vs_best_fixed_pct": -0.30888148263490445,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 0.3590020359861821,
+          "vs_best_fixed_pct": -32.102920563926546,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 0.5290701291305266,
+          "vs_best_fixed_pct": 0.061595712542563,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "LUFL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "EMA_0.5",
+        "index": 20,
+        "mean_loss": 0.20245976373724336
+      },
+      "worst_expert_mean_loss": 0.44469567351907163,
+      "expert_ranking": [
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 0.20245976373724336
+        },
+        {
+          "name": "EMA_0.3",
+          "mean_loss": 0.2028882833815085
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 0.20503615667085415
+        },
+        {
+          "name": "EMA_0.2",
+          "mean_loss": 0.20525712463573964
+        },
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 0.20866249718509597
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 0.2086628674334279
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 0.20871670839196743
+        },
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 0.20946500226427056
+        },
+        {
+          "name": "EMA_0.1",
+          "mean_loss": 0.20958592237220225
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 0.20998986468631312
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 0.2009425740371386,
+          "vs_best_fixed_pct": -0.7493783812144499,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 0.2029020510756835,
+          "vs_best_fixed_pct": 0.2184569073261059,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 0.19537808519181002,
+          "vs_best_fixed_pct": -3.4978202160820953,
+          "beats_best_fixed": true,
+          "eta": 0.001
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 0.20261662048978693,
+          "vs_best_fixed_pct": 0.07747551891206299,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 0.20203309484781054,
+          "vs_best_fixed_pct": -0.21074256017929774,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 0.14761930370128876,
+          "vs_best_fixed_pct": -27.087090799497197,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 0.20251769061111502,
+          "vs_best_fixed_pct": 0.028611548686204212,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "LULL"
+    },
+    {
+      "n_steps": 13100,
+      "n_experts": 32,
+      "eval_loss": "abs",
+      "best_fixed_expert": {
+        "name": "RidgeLag_100.0",
+        "index": 30,
+        "mean_loss": 1.9092637925826512
+      },
+      "worst_expert_mean_loss": 11.211715346769415,
+      "expert_ranking": [
+        {
+          "name": "RidgeLag_100.0",
+          "mean_loss": 1.9092637925826512
+        },
+        {
+          "name": "RidgeLag_10.0",
+          "mean_loss": 1.909663108852308
+        },
+        {
+          "name": "RidgeLag_1.0",
+          "mean_loss": 1.9097048791113955
+        },
+        {
+          "name": "RidgeLag_0.1",
+          "mean_loss": 1.9097090670170822
+        },
+        {
+          "name": "EMA_0.7",
+          "mean_loss": 1.9754980178430246
+        },
+        {
+          "name": "EMA_0.5",
+          "mean_loss": 1.978436364336544
+        },
+        {
+          "name": "EMA_0.9",
+          "mean_loss": 1.9804205646532478
+        },
+        {
+          "name": "LastValue",
+          "mean_loss": 1.9844972538538561
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mean_loss": 1.9844972538538561
+        },
+        {
+          "name": "SeasonalNaive_12",
+          "mean_loss": 1.9844972538538561
+        }
+      ],
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mean_loss": 1.9282811389918306,
+          "vs_best_fixed_pct": 0.9960565157659402,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mean_loss": 1.9104743621133977,
+          "vs_best_fixed_pct": 0.0634050431087349,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mean_loss": 1.8996592762924613,
+          "vs_best_fixed_pct": -0.5030481553938599,
+          "beats_best_fixed": true,
+          "eta": 0.001
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mean_loss": 1.9101935049169028,
+          "vs_best_fixed_pct": 0.048694807803060326,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mean_loss": 1.9098997409282379,
+          "vs_best_fixed_pct": 0.03330856364936475,
+          "beats_best_fixed": false
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mean_loss": 1.0793691639695322,
+          "vs_best_fixed_pct": -43.46673476117854,
+          "beats_best_fixed": true
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mean_loss": 1.9108151783738878,
+          "vs_best_fixed_pct": 0.08125570689936151,
+          "beats_best_fixed": false
+        }
+      ],
+      "column": "OT"
+    }
+  ]
+}
