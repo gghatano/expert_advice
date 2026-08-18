@@ -25,9 +25,12 @@ from tqdm import tqdm
 from src.data.load_uci import load_electricity
 from src.data.preprocess import load_processed, preprocess, save_processed
 from src.data.split import split_temporal
+from src.ensemble.adahedge import AdaHedge
+from src.ensemble.fixed_share import FixedShare
 from src.ensemble.hedge import Hedge
 from src.ensemble.loss import mae_loss
 from src.ensemble.meta_eta import MetaEtaHedge
+from src.ensemble.ml_poly import MLPoly
 from src.ensemble.scaling import by_train_mae, relative
 from src.experts.factory import create_experts
 
@@ -85,7 +88,23 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         choices=["meta_grid", "fixed"],
         default="meta_grid",
-        help="学習率選択モード",
+        help="学習率選択モード (--aggregator の別名。後方互換のため残置)",
+    )
+    parser.add_argument(
+        "--aggregator",
+        type=str,
+        choices=["meta_grid", "fixed", "fixed_share", "adahedge", "ml_poly"],
+        default=None,
+        help=(
+            "集約アルゴリズム。未指定なら --eta-mode に従う。"
+            "非定常データでは fixed_share が有効 (docs/replication.html 参照)"
+        ),
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=0.01,
+        help="Fixed-Share の share パラメータ (aggregator=fixed_share のとき有効)",
     )
     parser.add_argument(
         "--etas",
@@ -129,7 +148,10 @@ def build_parser() -> argparse.ArgumentParser:
 def _generate_run_id(args: argparse.Namespace) -> str:
     """日時 + 主要引数のハッシュから run_id を生成する."""
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    key_str = f"{args.agg}_{args.experts}_{args.eta_mode}_{args.scale_loss}_{args.seed}"
+    key_str = (
+        f"{args.agg}_{args.experts}_{_resolve_aggregator(args)}"
+        f"_{args.scale_loss}_{args.seed}"
+    )
     short_hash = hashlib.md5(key_str.encode()).hexdigest()[:6]
     return f"{now}_{short_hash}"
 
@@ -229,18 +251,32 @@ def _select_series(
     return all_cols
 
 
+def _resolve_aggregator(args: argparse.Namespace) -> str:
+    """--aggregator が未指定なら --eta-mode を採用する."""
+    return args.aggregator if args.aggregator is not None else args.eta_mode
+
+
 def _create_ensemble(
     n_experts: int,
-    eta_mode: str,
+    aggregator: str,
     etas: list[float] | None,
-) -> Hedge | MetaEtaHedge:
-    """eta_mode に応じて Ensemble オブジェクトを生成する."""
-    if eta_mode == "meta_grid":
+    alpha: float = 0.01,
+) -> Hedge | MetaEtaHedge | FixedShare | AdaHedge | MLPoly:
+    """アルゴリズム名に応じて Ensemble オブジェクトを生成する."""
+    if aggregator == "meta_grid":
         return MetaEtaHedge(n_experts=n_experts, etas=etas)
-    else:
-        # fixed mode: etas の先頭の値、または既定値 0.1
+    if aggregator == "fixed":
+        # etas の先頭の値、または既定値 0.1
         eta = etas[0] if etas else 0.1
         return Hedge(n_experts=n_experts, eta=eta)
+    if aggregator == "fixed_share":
+        eta = etas[0] if etas else 1.0
+        return FixedShare(n_experts=n_experts, eta=eta, alpha=alpha)
+    if aggregator == "adahedge":
+        return AdaHedge(n_experts=n_experts)
+    if aggregator == "ml_poly":
+        return MLPoly(n_experts=n_experts)
+    raise ValueError(f"Unknown aggregator: {aggregator!r}")
 
 
 def _run_online_phase(
@@ -307,14 +343,20 @@ def _run_online_phase(
                 [by_train_mae(l, train_mae) for l in raw_losses],
                 dtype=np.float64,
             )
+            scaled_ensemble_loss = by_train_mae(ensemble_raw_loss, train_mae)
         else:  # relative
             scaled_losses = np.array(
                 [relative(l, y_true) for l in raw_losses],
                 dtype=np.float64,
             )
+            scaled_ensemble_loss = relative(ensemble_raw_loss, y_true)
 
         # 5) 重み更新
-        ensemble.update(scaled_losses)
+        # ML-Poly はアンサンブル自身の損失も必要とする (USES_ENSEMBLE_LOSS)
+        if getattr(ensemble, "USES_ENSEMBLE_LOSS", False):
+            ensemble.update(scaled_losses, scaled_ensemble_loss)
+        else:
+            ensemble.update(scaled_losses)
 
         # 6) ベスト Expert を加算前の累積損失で選択（事前選択ベース）
         best_idx = int(np.argmin(expert_cum_losses))
@@ -409,6 +451,9 @@ def main(argv: list[str] | None = None) -> None:
     # eta パース
     etas = _parse_etas(args.etas)
 
+    # 集約アルゴリズムの解決 (--aggregator 優先、無ければ --eta-mode)
+    aggregator = _resolve_aggregator(args)
+
     # run_id 生成
     run_id = _generate_run_id(args)
     report_dir = _PROJECT_ROOT / "reports" / run_id
@@ -425,6 +470,8 @@ def main(argv: list[str] | None = None) -> None:
         "clip_quantile": args.clip_quantile,
         "experts": args.experts,
         "eta_mode": args.eta_mode,
+        "aggregator": aggregator,
+        "alpha": args.alpha,
         "etas": etas,
         "scale_loss": args.scale_loss,
         "n_series": args.n_series,
@@ -462,7 +509,7 @@ def main(argv: list[str] | None = None) -> None:
     agg_total_steps: int = 0
     # 代表系列の weight_snapshots を保持（最初の系列の test フェーズ）
     representative_weight_snapshots: list[dict] = []
-    is_meta_eta: bool = args.eta_mode == "meta_grid"
+    is_meta_eta: bool = aggregator == "meta_grid"
 
     # 系列ごとのループ
     for col_idx, col in enumerate(tqdm(selected_cols, desc="Series")):
@@ -489,7 +536,7 @@ def main(argv: list[str] | None = None) -> None:
             all_expert_names = [exp.name for exp in experts]
 
         # d) Ensemble 生成
-        ensemble = _create_ensemble(n_experts, args.eta_mode, etas)
+        ensemble = _create_ensemble(n_experts, aggregator, etas, args.alpha)
 
         # e) Valid 期間で逐次予測・重み更新
         valid_records, _valid_stats = _run_online_phase(

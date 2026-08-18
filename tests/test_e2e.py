@@ -527,13 +527,13 @@ class TestCreateEnsemble:
     """_create_ensemble のテスト."""
 
     def test_meta_grid_returns_meta_eta_hedge(self) -> None:
-        """eta_mode='meta_grid' で MetaEtaHedge が返る."""
-        ens = _create_ensemble(n_experts=5, eta_mode="meta_grid", etas=[0.1, 0.5])
+        """aggregator='meta_grid' で MetaEtaHedge が返る."""
+        ens = _create_ensemble(n_experts=5, aggregator="meta_grid", etas=[0.1, 0.5])
         assert isinstance(ens, MetaEtaHedge)
 
     def test_fixed_returns_hedge(self) -> None:
-        """eta_mode='fixed' で Hedge が返る."""
-        ens = _create_ensemble(n_experts=5, eta_mode="fixed", etas=[0.2])
+        """aggregator='fixed' で Hedge が返る."""
+        ens = _create_ensemble(n_experts=5, aggregator="fixed", etas=[0.2])
         assert isinstance(ens, Hedge)
         assert ens.eta == pytest.approx(0.2)
 
