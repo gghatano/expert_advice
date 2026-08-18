@@ -1,0 +1,630 @@
+{
+  "horizon": 24,
+  "train_end": "2019-01-01",
+  "eval_start": "2019-01-01",
+  "lockdown": "2020-03-16",
+  "eval_end": "2020-09-30",
+  "focus_country": "FR",
+  "countries": [
+    {
+      "country": "DE",
+      "country_name": "Germany",
+      "seasonal_matched_spring": [
+        {
+          "name": "Single expert picked before COVID (RidgeLag_100.0)",
+          "mae_2019": 2841.1187696240872,
+          "mae_2020": 2510.9985621647525,
+          "change_pct": -11.6193737125257
+        },
+        {
+          "name": "Equal Weight",
+          "mae_2019": 6028.689039013238,
+          "mae_2020": 4947.631097730972,
+          "change_pct": -17.931890901760802
+        },
+        {
+          "name": "Follow the Leader",
+          "mae_2019": 2841.1187696240872,
+          "mae_2020": 2510.9985621647525,
+          "change_pct": -11.6193737125257
+        },
+        {
+          "name": "Hedge (tuned eta)",
+          "mae_2019": 2840.6881663924896,
+          "mae_2020": 2511.2542820946646,
+          "change_pct": -11.596974570995839
+        },
+        {
+          "name": "Meta-eta Hedge",
+          "mae_2019": 2841.2294324761388,
+          "mae_2020": 2511.149725880512,
+          "change_pct": -11.617495680662486
+        },
+        {
+          "name": "AdaHedge",
+          "mae_2019": 2841.2341223505214,
+          "mae_2020": 2511.2303816454396,
+          "change_pct": -11.614802810831844
+        },
+        {
+          "name": "Fixed-Share",
+          "mae_2019": 1415.6499048738337,
+          "mae_2020": 1415.588578558647,
+          "change_pct": -0.004332025522385558
+        },
+        {
+          "name": "ML-Poly",
+          "mae_2019": 2841.2357859291583,
+          "mae_2020": 2511.2549352930428,
+          "change_pct": -11.613990372439405
+        }
+      ],
+      "seasonal_matched_experts": [
+        {
+          "name": "SeasonalProfile",
+          "mae_2019": 2622.9736007602232,
+          "mae_2020": 6023.941303901535,
+          "change_pct": 129.6607675409162
+        },
+        {
+          "name": "SeasonalNaive_168",
+          "mae_2019": 3272.85927672956,
+          "mae_2020": 2970.5385220125786,
+          "change_pct": -9.237206037745645
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mae_2019": 5010.776729559749,
+          "mae_2020": 3833.1902515723273,
+          "change_pct": -23.50107661034989
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mae_2019": 2841.1187696240872,
+          "mae_2020": 2510.9985621647525,
+          "change_pct": -11.6193737125257
+        },
+        {
+          "name": "LastValue",
+          "mae_2019": 5010.776729559749,
+          "mae_2020": 3833.1902515723273,
+          "change_pct": -23.50107661034989
+        },
+        {
+          "name": "SMA_24",
+          "mae_2019": 8870.134384827044,
+          "mae_2020": 7470.703108621593,
+          "change_pct": -15.776889227284673
+        }
+      ],
+      "n_eval_hours": 15313,
+      "lockdown_index": 10560,
+      "expert_chosen_before_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_pre": 2371.817709366293,
+        "mae_covid": 2078.6615035134314,
+        "degradation_pct": -12.359980478060756
+      },
+      "best_fixed_expert_during_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_covid": 2078.6615035134355
+      },
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mae_pre": 5781.8490168877215,
+          "mae_covid": 5121.020485705101,
+          "vs_chosen_pre_pct": 143.77290860318806,
+          "vs_chosen_covid_pct": 146.3614435082076
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mae_pre": 2374.7816206176294,
+          "mae_covid": 2078.6615035134314,
+          "vs_chosen_pre_pct": 0.1249637035608574,
+          "vs_chosen_covid_pct": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mae_pre": 2369.4415108000167,
+          "mae_covid": 2079.02736303738,
+          "vs_chosen_pre_pct": -0.10018470462096436,
+          "vs_chosen_covid_pct": 0.017600726396776963
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mae_pre": 2375.180680325183,
+          "mae_covid": 2078.850619527587,
+          "vs_chosen_pre_pct": 0.14178876165776128,
+          "vs_chosen_covid_pct": 0.009097970681409037
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mae_pre": 2374.6740145743724,
+          "mae_covid": 2078.98648846934,
+          "vs_chosen_pre_pct": 0.12042684380000691,
+          "vs_chosen_covid_pct": 0.015634337546517395
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mae_pre": 1262.5479325057504,
+          "mae_covid": 1193.070520611869,
+          "vs_chosen_pre_pct": -46.768761885875264,
+          "vs_chosen_covid_pct": -42.6039055134616
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mae_pre": 2379.307641781911,
+          "mae_covid": 2079.028479299484,
+          "vs_chosen_pre_pct": 0.3157887044202604,
+          "vs_chosen_covid_pct": 0.017654427401106863
+        }
+      ]
+    },
+    {
+      "country": "ES",
+      "country_name": "Spain",
+      "seasonal_matched_spring": [
+        {
+          "name": "Single expert picked before COVID (RidgeLag_100.0)",
+          "mae_2019": 980.1990849105395,
+          "mae_2020": 926.6129566685632,
+          "change_pct": -5.466861688293343
+        },
+        {
+          "name": "Equal Weight",
+          "mae_2019": 2270.1583220497446,
+          "mae_2020": 1762.7430970531075,
+          "change_pct": -22.35153469553999
+        },
+        {
+          "name": "Follow the Leader",
+          "mae_2019": 980.1990849105395,
+          "mae_2020": 926.6129566685632,
+          "change_pct": -5.466861688293343
+        },
+        {
+          "name": "Hedge (tuned eta)",
+          "mae_2019": 980.3575718342545,
+          "mae_2020": 926.8508587721237,
+          "change_pct": -5.457877268394979
+        },
+        {
+          "name": "Meta-eta Hedge",
+          "mae_2019": 980.341951932757,
+          "mae_2020": 926.7514049560315,
+          "change_pct": -5.466515726586117
+        },
+        {
+          "name": "AdaHedge",
+          "mae_2019": 980.3528128045325,
+          "mae_2020": 926.8219229759895,
+          "change_pct": -5.460369892284505
+        },
+        {
+          "name": "Fixed-Share",
+          "mae_2019": 529.54265625643,
+          "mae_2020": 523.0220693562197,
+          "change_pct": -1.231361973048048
+        },
+        {
+          "name": "ML-Poly",
+          "mae_2019": 980.3579349868049,
+          "mae_2020": 926.8530917527864,
+          "change_pct": -5.457684517516416
+        }
+      ],
+      "seasonal_matched_experts": [
+        {
+          "name": "SeasonalProfile",
+          "mae_2019": 1700.6549646025078,
+          "mae_2020": 4632.487433396188,
+          "change_pct": 172.3943145327503
+        },
+        {
+          "name": "SeasonalNaive_168",
+          "mae_2019": 1134.9815251572327,
+          "mae_2020": 1080.964033018868,
+          "change_pct": -4.759327878123969
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mae_2019": 1722.564858490566,
+          "mae_2020": 1290.7165880503144,
+          "change_pct": -25.07007317092651
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mae_2019": 980.1990849105395,
+          "mae_2020": 926.6129566685632,
+          "change_pct": -5.466861688293343
+        },
+        {
+          "name": "LastValue",
+          "mae_2019": 1722.564858490566,
+          "mae_2020": 1290.7165880503144,
+          "change_pct": -25.07007317092651
+        },
+        {
+          "name": "SMA_24",
+          "mae_2019": 3481.2556996855346,
+          "mae_2020": 2826.6190055031448,
+          "change_pct": -18.804613928288116
+        }
+      ],
+      "n_eval_hours": 15313,
+      "lockdown_index": 10560,
+      "expert_chosen_before_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_pre": 1064.9596161328784,
+        "mae_covid": 931.3279613765267,
+        "degradation_pct": -12.548049027586611
+      },
+      "best_fixed_expert_during_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_covid": 931.3279613765253
+      },
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mae_pre": 2506.6533523794856,
+          "mae_covid": 2050.7789343320414,
+          "vs_chosen_pre_pct": 135.3754371909181,
+          "vs_chosen_covid_pct": 120.19943772556097
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mae_pre": 1066.1643058990594,
+          "mae_covid": 931.3279613765267,
+          "vs_chosen_pre_pct": 0.11312069940788044,
+          "vs_chosen_covid_pct": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mae_pre": 1065.1058595037537,
+          "mae_covid": 931.4705207145444,
+          "vs_chosen_pre_pct": 0.01373229262967723,
+          "vs_chosen_covid_pct": 0.015307103826989608
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mae_pre": 1066.9336850359266,
+          "mae_covid": 931.4094554947769,
+          "vs_chosen_pre_pct": 0.18536561134745233,
+          "vs_chosen_covid_pct": 0.008750313705796785
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mae_pre": 1066.0748300458904,
+          "mae_covid": 931.4527173277662,
+          "vs_chosen_pre_pct": 0.10471889225824278,
+          "vs_chosen_covid_pct": 0.013395490784486168
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mae_pre": 585.9379859756068,
+          "mae_covid": 561.7886258868424,
+          "vs_chosen_pre_pct": -44.98026243443043,
+          "vs_chosen_covid_pct": -39.67875451129972
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mae_pre": 1066.2138057486034,
+          "mae_covid": 931.4719002687963,
+          "vs_chosen_pre_pct": 0.11776874885446029,
+          "vs_chosen_covid_pct": 0.015455231480096138
+        }
+      ]
+    },
+    {
+      "country": "FR",
+      "country_name": "France",
+      "seasonal_matched_spring": [
+        {
+          "name": "Single expert picked before COVID (RidgeLag_100.0)",
+          "mae_2019": 2339.857227160078,
+          "mae_2020": 1942.3322805925345,
+          "change_pct": -16.989282164451794
+        },
+        {
+          "name": "Equal Weight",
+          "mae_2019": 3629.6091317022997,
+          "mae_2020": 2933.05335082947,
+          "change_pct": -19.190930912887094
+        },
+        {
+          "name": "Follow the Leader",
+          "mae_2019": 2339.882006687851,
+          "mae_2020": 1942.3322805925345,
+          "change_pct": -16.99016125424444
+        },
+        {
+          "name": "Hedge (tuned eta)",
+          "mae_2019": 2340.1983701697404,
+          "mae_2020": 1942.724743437978,
+          "change_pct": -16.984612578075275
+        },
+        {
+          "name": "Meta-eta Hedge",
+          "mae_2019": 2340.181389152188,
+          "mae_2020": 1942.5652925097943,
+          "change_pct": -16.990823809022935
+        },
+        {
+          "name": "AdaHedge",
+          "mae_2019": 2340.189541668945,
+          "mae_2020": 1942.6471320306846,
+          "change_pct": -16.987615855882613
+        },
+        {
+          "name": "Fixed-Share",
+          "mae_2019": 1416.2329663367027,
+          "mae_2020": 1032.3619132723543,
+          "change_pct": -27.105078203149585
+        },
+        {
+          "name": "ML-Poly",
+          "mae_2019": 2340.1974335036925,
+          "mae_2020": 1942.71749661579,
+          "change_pct": -16.98488901822289
+        }
+      ],
+      "seasonal_matched_experts": [
+        {
+          "name": "SeasonalProfile",
+          "mae_2019": 6281.07618707045,
+          "mae_2020": 11121.617029537376,
+          "change_pct": 77.06546932882527
+        },
+        {
+          "name": "SeasonalNaive_168",
+          "mae_2019": 3054.550314465409,
+          "mae_2020": 2849.8494496855346,
+          "change_pct": -6.701505744085279
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mae_2019": 3111.4205974842766,
+          "mae_2020": 2296.73034591195,
+          "change_pct": -26.183867659391357
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mae_2019": 2339.857227160078,
+          "mae_2020": 1942.3322805925345,
+          "change_pct": -16.989282164451794
+        },
+        {
+          "name": "LastValue",
+          "mae_2019": 3111.4205974842766,
+          "mae_2020": 2296.73034591195,
+          "change_pct": -26.183867659391357
+        },
+        {
+          "name": "SMA_24",
+          "mae_2019": 5219.218684486373,
+          "mae_2020": 4225.856574292453,
+          "change_pct": -19.03277425693224
+        }
+      ],
+      "n_eval_hours": 15313,
+      "lockdown_index": 10560,
+      "expert_chosen_before_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_pre": 2369.9272023729254,
+        "mae_covid": 1828.1774389520806,
+        "degradation_pct": -22.85934196115432
+      },
+      "best_fixed_expert_during_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_covid": 1828.1774389520817
+      },
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mae_pre": 3817.1353848175786,
+          "mae_covid": 3112.366282586479,
+          "vs_chosen_pre_pct": 61.06551209655782,
+          "vs_chosen_covid_pct": 70.24421242013035
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mae_pre": 2371.1679801493374,
+          "mae_covid": 1828.1774389520806,
+          "vs_chosen_pre_pct": 0.052355100830507054,
+          "vs_chosen_covid_pct": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mae_pre": 2370.214214119429,
+          "mae_covid": 1828.6437870928096,
+          "vs_chosen_pre_pct": 0.012110572266364122,
+          "vs_chosen_covid_pct": 0.025508910174294092
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mae_pre": 2372.506650549656,
+          "mae_covid": 1828.409788934333,
+          "vs_chosen_pre_pct": 0.10884081899848999,
+          "vs_chosen_covid_pct": 0.012709378056077998
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mae_pre": 2371.0027180217144,
+          "mae_covid": 1828.5259989088665,
+          "vs_chosen_pre_pct": 0.04538180108283809,
+          "vs_chosen_covid_pct": 0.019065980651514013
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mae_pre": 1470.2973187539912,
+          "mae_covid": 979.6893231426809,
+          "vs_chosen_pre_pct": -37.96023281720072,
+          "vs_chosen_covid_pct": -46.411693839508104
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mae_pre": 2372.6472489741877,
+          "mae_covid": 1828.6330772435037,
+          "vs_chosen_pre_pct": 0.11477342420217901,
+          "vs_chosen_covid_pct": 0.024923089067565025
+        }
+      ]
+    },
+    {
+      "country": "IT",
+      "country_name": "Italy",
+      "seasonal_matched_spring": [
+        {
+          "name": "Single expert picked before COVID (RidgeLag_100.0)",
+          "mae_2019": 1844.1063816534595,
+          "mae_2020": 1669.5517295591083,
+          "change_pct": -9.465541350051746
+        },
+        {
+          "name": "Equal Weight",
+          "mae_2019": 4348.704001539998,
+          "mae_2020": 3171.1482850652037,
+          "change_pct": -27.078313816203377
+        },
+        {
+          "name": "Follow the Leader",
+          "mae_2019": 1904.5420850152773,
+          "mae_2020": 1669.5517295591083,
+          "change_pct": -12.338417581057762
+        },
+        {
+          "name": "Hedge (tuned eta)",
+          "mae_2019": 1756.1797245405512,
+          "mae_2020": 1669.96673920288,
+          "change_pct": -4.909120868037926
+        },
+        {
+          "name": "Meta-eta Hedge",
+          "mae_2019": 1904.0726877255065,
+          "mae_2020": 1669.6919910601014,
+          "change_pct": -12.309440609926638
+        },
+        {
+          "name": "AdaHedge",
+          "mae_2019": 1901.6229927188801,
+          "mae_2020": 1669.9237067320028,
+          "change_pct": -12.184291359224737
+        },
+        {
+          "name": "Fixed-Share",
+          "mae_2019": 861.4641936629408,
+          "mae_2020": 851.0668214352497,
+          "change_pct": -1.2069418908151643
+        },
+        {
+          "name": "ML-Poly",
+          "mae_2019": 1900.4767268317673,
+          "mae_2020": 1669.9505041938894,
+          "change_pct": -12.129915582927547
+        }
+      ],
+      "seasonal_matched_experts": [
+        {
+          "name": "SeasonalProfile",
+          "mae_2019": 2679.3757462934,
+          "mae_2020": 6418.992999373587,
+          "change_pct": 139.5704674215069
+        },
+        {
+          "name": "SeasonalNaive_168",
+          "mae_2019": 1903.2216981132076,
+          "mae_2020": 1814.1552672955975,
+          "change_pct": -4.679771721072101
+        },
+        {
+          "name": "SeasonalNaive_24",
+          "mae_2019": 3395.5931603773583,
+          "mae_2020": 2464.363993710692,
+          "change_pct": -27.42463901544605
+        },
+        {
+          "name": "RidgeLag_100.0",
+          "mae_2019": 1844.1063816534595,
+          "mae_2020": 1669.5517295591083,
+          "change_pct": -9.465541350051746
+        },
+        {
+          "name": "LastValue",
+          "mae_2019": 3395.5931603773583,
+          "mae_2020": 2464.363993710692,
+          "change_pct": -27.42463901544605
+        },
+        {
+          "name": "SMA_24",
+          "mae_2019": 6590.835588092903,
+          "mae_2020": 4923.94436255241,
+          "change_pct": -25.2910454715624
+        }
+      ],
+      "n_eval_hours": 15313,
+      "lockdown_index": 10560,
+      "expert_chosen_before_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_pre": 1847.7210462031296,
+        "mae_covid": 1763.7217721766342,
+        "degradation_pct": -4.5461014907583035
+      },
+      "best_fixed_expert_during_covid": {
+        "name": "RidgeLag_100.0",
+        "mae_covid": 1763.7217721766328
+      },
+      "algorithms": [
+        {
+          "algorithm": "Equal Weight",
+          "mae_pre": 4447.021634418554,
+          "mae_covid": 3582.3641424750012,
+          "vs_chosen_pre_pct": 140.6760286438643,
+          "vs_chosen_covid_pct": 103.1139037340314
+        },
+        {
+          "algorithm": "Follow the Leader",
+          "mae_pre": 1851.7908256058454,
+          "mae_covid": 1763.7217721766342,
+          "vs_chosen_pre_pct": 0.2202594060980542,
+          "vs_chosen_covid_pct": 0.0
+        },
+        {
+          "algorithm": "Hedge (tuned eta)",
+          "mae_pre": 1806.631562261133,
+          "mae_covid": 1763.9927464244445,
+          "vs_chosen_pre_pct": -2.223792602591778,
+          "vs_chosen_covid_pct": 0.015363775176163948
+        },
+        {
+          "algorithm": "Meta-eta Hedge",
+          "mae_pre": 1850.0058291927903,
+          "mae_covid": 1763.808213557042,
+          "vs_chosen_pre_pct": 0.12365410863050375,
+          "vs_chosen_covid_pct": 0.004901078036884832
+        },
+        {
+          "algorithm": "AdaHedge",
+          "mae_pre": 1845.9769378443157,
+          "mae_covid": 1763.9634654514582,
+          "vs_chosen_pre_pct": -0.09439240638612109,
+          "vs_chosen_covid_pct": 0.013703594219723465
+        },
+        {
+          "algorithm": "Fixed-Share",
+          "mae_pre": 880.4632586240771,
+          "mae_covid": 917.8003006981752,
+          "vs_chosen_pre_pct": -52.34869135504326,
+          "vs_chosen_covid_pct": -47.96229682159535
+        },
+        {
+          "algorithm": "ML-Poly",
+          "mae_pre": 1850.1075498798907,
+          "mae_covid": 1763.981730597392,
+          "vs_chosen_pre_pct": 0.1291593058197343,
+          "vs_chosen_covid_pct": 0.014739196672556434
+        }
+      ]
+    }
+  ]
+}

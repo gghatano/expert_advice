@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>実験レポート — Expert Advise</title>
+<meta name="description" content="本プロジェクトの既定設定を UCI 電力データで再現し、なぜ結果が面白くならないのかを原因ごとに分解した実験レポート。">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">Expert Advise</a>
+    <nav>
+      <a href="index.html">ホーム</a>
+      <a href="algorithm.html">アルゴリズム解説</a>
+      <a href="experiment.html" aria-current="page">実験レポート</a>
+      <a href="replication.html">追試結果</a>
+      <a href="https://github.com/gghatano/expert_advice">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<h1>実験レポート：既定設定はなぜ退屈なのか</h1>
+
+<p class="lede">
+本プロジェクトの既定設定（1 時間先予測 + light30 Expert 群 + Meta-η Hedge）を、
+UCI Electricity Load Diagrams の<strong>実データ</strong>で再現しました。
+結論から言うと、結果が面白くないのは実装の問題ではなく<strong>設計上そうなるべくしてなっている</strong>
+ことが確認できました。原因を 3 つに分解し、それぞれに対する処方箋を示します。
+</p>
+
+<h2>実験設定</h2>
+
+<div class="table-wrap">
+<table>
+  <caption>実験 0 の設定（<code>scripts/experiments/exp0_uci_baseline.py</code>）</caption>
+  <tbody>
+    <tr><th>データ</th><td>UCI Electricity Load Diagrams 2011–2014（370 系列、15 分粒度 → 1 時間集約）</td></tr>
+    <tr><th>対象系列</th><td><!-- AUTO:exp0_nseries -->26<!-- /AUTO:exp0_nseries --> 系列をランダム抽出（seed 42）</td></tr>
+    <tr><th>Expert 群</th><td>light30 相当 30 本（Naive / 移動平均 / EMA / Drift / Ridge / 季節プロファイル）</td></tr>
+    <tr><th>学習期間</th><td>2011-01-01 〜 2013-12-31（学習を要する Expert のみ使用）</td></tr>
+    <tr><th>評価期間</th><td>2014-07-01 〜 2014-12-31（逐次オンライン評価）</td></tr>
+    <tr><th>損失</th><td>重み更新は訓練 MAE で正規化した絶対誤差、評価は生の MAE</td></tr>
+    <tr><th>比較対象</th><td>事後的に最良だった単一 Expert（＝ regret の基準）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p class="footnote">
+比較対象を「事後的に最良の 1 本」にしているのは、これが Hedge の理論保証がうたう相手だからです。
+実務上はもっと強い相手（自分では選べない相手）なので、これに並べば健闘、下回れば大成功です。
+</p>
+
+<h2>結果</h2>
+
+<!-- AUTO:exp0_table -->
+<div class="table-wrap">
+<table>
+  <caption>UCI Electricity 26 系列。「最良固定 Expert 比」は各系列での差の中央値、「勝率」は下回った系列の割合。負の値が勝ち。</caption>
+  <thead><tr><th>アルゴリズム</th><th class="num">1 時間先：最良固定 Expert 比</th><th class="num">勝率</th><th class="num">24 時間先：最良固定 Expert 比</th><th class="num">勝率</th></tr></thead>
+  <tbody>
+      <tr><td>Equal Weight</td><td class="num lose">+147.65%</td><td class="num">0%</td><td class="num lose">+91.85%</td><td class="num">0%</td></tr>
+      <tr><td>Follow the Leader</td><td class="num lose">+0.27%</td><td class="num">0%</td><td class="num lose">+0.16%</td><td class="num">0%</td></tr>
+      <tr><td>Hedge (tuned eta)</td><td class="num win">-0.07%</td><td class="num">69%</td><td class="num win">-0.02%</td><td class="num">58%</td></tr>
+      <tr><td>Meta-eta Hedge</td><td class="num lose">+0.18%</td><td class="num">19%</td><td class="num lose">+0.15%</td><td class="num">8%</td></tr>
+      <tr><td>AdaHedge</td><td class="num win">-0.00%</td><td class="num">50%</td><td class="num lose">+0.04%</td><td class="num">38%</td></tr>
+      <tr class="row-highlight"><td>Fixed-Share</td><td class="num win">-7.60%</td><td class="num">96%</td><td class="num win">-12.41%</td><td class="num">100%</td></tr>
+      <tr><td>ML-Poly</td><td class="num lose">+0.08%</td><td class="num">0%</td><td class="num lose">+0.10%</td><td class="num">0%</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="footnote">Equal Weight が大きく劣るのは、急変時にまったく当たらない Expert （長窓の移動平均など）を等しく信用してしまうためです。</p>
+<!-- /AUTO:exp0_table -->
+
+<figure>
+  <img src="figures/exp0_uci_baseline/settings_comparison.png"
+       alt="UCI 電力データにおける、2 つの設定でのアルゴリズム比較">
+  <figcaption>
+    横 0% の線が「事後に選べる最良の単一 Expert」。下に行くほど良い結果です。
+    左が既定設定（1 時間先予測）、右は予測ホライズンだけを翌日（24 時間先）に変えたもの。
+    Equal Weight は桁が違うため表示範囲から外しています（値は上の表を参照）。
+  </figcaption>
+</figure>
+
+<div class="callout bad">
+  <span class="label">既定設定の結果</span>
+  <p>
+    Meta-η Hedge は最良固定 Expert に対して <strong>+0.2% 前後</strong>。
+    つまり <strong>30 本の Expert を混ぜた意味がほぼゼロ</strong>で、
+    「事後に分かる最良の 1 本」にわずかに届かないだけの存在になっています。
+    Follow the Leader（累積損失が最小の Expert に全張りするだけ）とも差がありません。
+  </p>
+</div>
+
+<h2>原因の分解</h2>
+
+<h3>原因 1：絶対誤差では、最良の 1 本を超えられない</h3>
+
+<p>
+<a href="algorithm.html#">アルゴリズム解説</a>で述べたとおり、Hedge の保証は
+「最良の<strong>固定</strong> Expert + \(O(\sqrt{T \ln N})\)」です。超えるとは言っていません。
+絶対誤差（線形な損失）では指数重み法に有利な構造（mixability）がないため、
+アンサンブルが単一 Expert を上回る理由が理論上ありません。
+</p>
+
+<p>
+そして重みは \(w_i \propto e^{-\eta L_i}\)、つまり<strong>累積</strong>損失だけで決まります。
+数千ステップも回れば累積損失の差は開ききり、重みは事実上 1 本に集中します。
+Hedge は <strong>時間とともに Follow the Leader に収束していく</strong>ので、結果が一致するのは当然です。
+</p>
+
+<h3>原因 2：データが定常で、勝つべき Expert が入れ替わらない</h3>
+
+<p>
+1 時間先の電力需要は「1 時間前の値」でほぼ説明できてしまいます。
+実際、評価期間を通じて最良だった Expert は<strong>系列ごとにほぼ 1 本に固定</strong>されており、
+時間とともに入れ替わることがありません。乗り換えの余地がない以上、
+どんな適応アルゴリズムを持ってきても得るものがありません。
+</p>
+
+<h3>原因 3：Expert 群が「1 強 + その他」になっている</h3>
+
+<p>
+light30 は「同じ family のパラメータ違い」を並べて 30 本にしています
+（SMA の窓長違い、EMA の α 違い、SeasonalNaive の周期違い）。
+その結果、Ridge 系が 1 本だけ突出して強く、残りは明確に弱い、という構成になりがちです。
+Expert Advice が利得を生むのは
+<strong>「強さが同程度で、外し方が違う」Expert が複数いるとき</strong>なので、この構成は不利です。
+等重み平均が最良 Expert の 2〜3 倍悪いのは、その裏返しです。
+</p>
+
+<h2>処方箋：何を変えると効くのか</h2>
+
+<p>
+上の 3 つのうち、原因 1 と 2 に直接効く変更を 2 つ試しました。どちらも同じデータ・同じ Expert 群のままです。
+</p>
+
+<h3>(a) アルゴリズムを Fixed-Share にする</h3>
+
+<p>
+重みに下限 \(\alpha/N\) を設けるだけで、重みが「累積損失」ではなく
+<strong>「直近の損失」</strong>で決まるようになります。これは実質的に
+「忘却付きの Hedge」であり、定常に見えるデータでも局所的な得意・不得意の変化を拾えます。
+既定設定のままアルゴリズムだけ差し替えて、
+最良固定 Expert 比 <strong><!-- AUTO:exp0_fs_1step -->-7.6%<!-- /AUTO:exp0_fs_1step --></strong>
+（勝率 <!-- AUTO:exp0_fs_1step_win -->96%<!-- /AUTO:exp0_fs_1step_win -->）。
+</p>
+
+<h3>(b) タスクを翌日予測にする</h3>
+
+<p>
+1 時間先予測は簡単すぎて差が出ません。実務で必要なのは翌日の需要なので、
+予測ホライズンを 24 時間先に変えました。すると Expert ごとの得意・不得意がはっきり分かれ、
+集約の利得が広がります。Fixed-Share は
+<strong><!-- AUTO:exp0_fs_24step -->-12.4%<!-- /AUTO:exp0_fs_24step --></strong>
+（勝率 <!-- AUTO:exp0_fs_24step_win -->100%<!-- /AUTO:exp0_fs_24step_win -->）。
+</p>
+
+<div class="callout good">
+  <span class="label">要点</span>
+  <p>
+    Expert を増やすことでも、η のチューニングでもなく、
+    <strong>「重みが過去に引きずられない」ようにすること</strong>が効きました。
+    Meta-η Hedge は η を自動化しますが、比較対象は「最良の固定 Expert」のままなので、
+    この問題は解決しません。
+  </p>
+</div>
+
+<h2>付録：実装上の発見</h2>
+
+<div class="callout warn">
+  <span class="label">修正した不具合</span>
+  <p>
+    この実験にあたり、<code>src/data/load_uci.py</code> が
+    <strong>実際の UCI 配布ファイルを読み込めない</strong>ことが分かりました。
+  </p>
+  <p>
+    <code>pd.read_csv(..., parse_dates=[0], dayfirst=True)</code> という指定は、
+    ISO 形式（<code>2011-01-13 00:15:00</code>）のファイルで 13 日以降の日付が現れると
+    pandas が日付解析を諦め、<strong>警告なしに文字列のままのインデックス</strong>を返します。
+    その結果、後続の <code>preprocess()</code> が
+    <code>TypeError: Only valid with DatetimeIndex</code> で停止していました。
+    先頭数行だけのテストデータでは再現しないため、テストは通っていました。
+  </p>
+  <p>
+    日付解析を <code>read_csv</code> 任せにせず、ISO 形式を優先して明示的に変換し、
+    解析できない場合のみ日欧形式にフォールバックするよう修正しました
+    （回帰テスト <code>tests/test_preprocess.py::TestLoadElectricityIndexParsing</code> つき）。
+  </p>
+</div>
+
+<h2>次に読む</h2>
+
+<p>
+ここでは「効かない条件」を確認しました。逆に
+<strong>Expert Advice が本来の力を発揮する条件</strong>を、人工データと 3 つの実データで
+再現した結果を<a href="replication.html">追試結果</a>にまとめています。
+</p>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    数値は <code>docs/results/exp0_uci_baseline.json</code> から自動生成しています。
+    ソースコードは <a href="https://github.com/gghatano/expert_advice">GitHub リポジトリ</a>にあります。
+  </div>
+</footer>
+
+</body>
+</html>

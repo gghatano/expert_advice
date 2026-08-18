@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アルゴリズム解説 — Expert Advise</title>
+<meta name="description" content="Prediction with Expert Advice / Hedge / 後悔 (regret) / 学習率 η / Fixed-Share / ML-Poly を、予備知識なしで読めるように解説します。">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$']] },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a class="brand" href="index.html">Expert Advise</a>
+    <nav>
+      <a href="index.html">ホーム</a>
+      <a href="algorithm.html" aria-current="page">アルゴリズム解説</a>
+      <a href="experiment.html">実験レポート</a>
+      <a href="replication.html">追試結果</a>
+      <a href="https://github.com/gghatano/expert_advice">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<h1>アルゴリズム解説</h1>
+
+<p class="lede">
+機械学習の予備知識は要りません。「重みを掛けて足す」ところから始めて、
+このプロジェクトで使っている 5 つのアルゴリズムが<strong>それぞれ何を保証しているのか</strong>まで
+たどり着きます。数式は出てきますが、すべて日本語で言い換えを付けています。
+</p>
+
+<h2>1. 解いている問題</h2>
+
+<p>
+毎時間、電力需要を予測する仕事を任されたとします。手元には <strong>30 人の予測担当者</strong>がいます。
+ある人は「1 時間前と同じ値」と言い、別の人は「昨日の同じ時刻と同じ値」と言い、
+また別の人は「直近 24 時間の平均」と言います。この担当者たちを <strong>Expert</strong> と呼びます。
+</p>
+
+<p>
+あなたの仕事は、この 30 個の意見から <strong>1 つの予測</strong>を作ることです。
+そして 1 時間後には正解が分かるので、誰が当たって誰が外したかを見て、次の予測に活かせます。
+これを延々と繰り返す — この設定を <strong>オンライン予測（online prediction）</strong>、
+なかでも Expert の助言を使うものを
+<strong>Prediction with Expert Advice</strong> と呼びます。
+</p>
+
+<div class="svg-figure">
+<svg viewBox="0 0 780 215" role="img" aria-label="オンライン予測の 1 ステップの流れ図">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--fg-muted)"/>
+    </marker>
+  </defs>
+  <g font-size="12.5" font-family="inherit" text-anchor="middle">
+    <g>
+      <rect x="12" y="38" width="176" height="66" rx="8"
+            fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+      <text x="100" y="63" fill="var(--fg)" font-weight="700">① 各 Expert が予測</text>
+      <text x="100" y="84" fill="var(--fg-muted)" font-size="11.5">f₁, f₂, …, f₃₀</text>
+    </g>
+    <g>
+      <rect x="205" y="38" width="176" height="66" rx="8"
+            fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+      <text x="293" y="63" fill="var(--fg)" font-weight="700">② 重み付き平均</text>
+      <text x="293" y="84" fill="var(--fg-muted)" font-size="11.5">ŷ = Σ pᵢ fᵢ</text>
+    </g>
+    <g>
+      <rect x="398" y="38" width="176" height="66" rx="8"
+            fill="var(--bg-soft)" stroke="var(--border)" stroke-width="1.4"/>
+      <text x="486" y="63" fill="var(--fg)" font-weight="700">③ 実測 y が判明</text>
+      <text x="486" y="84" fill="var(--fg-muted)" font-size="11.5">損失 ℓᵢ = |y − fᵢ|</text>
+    </g>
+    <g>
+      <rect x="591" y="38" width="176" height="66" rx="8"
+            fill="var(--good-soft)" stroke="var(--good)" stroke-width="1.4"/>
+      <text x="679" y="63" fill="var(--fg)" font-weight="700">④ 重みを更新</text>
+      <text x="679" y="84" fill="var(--fg-muted)" font-size="11.5">wᵢ ← wᵢ e^(−η ℓᵢ)</text>
+    </g>
+
+    <path d="M 190 71 L 201 71" stroke="var(--fg-muted)" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <path d="M 383 71 L 394 71" stroke="var(--fg-muted)" stroke-width="1.6" marker-end="url(#arrow)"/>
+    <path d="M 576 71 L 587 71" stroke="var(--fg-muted)" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <path d="M 679 106 L 679 155 L 100 155 L 100 108"
+          fill="none" stroke="var(--fg-muted)" stroke-width="1.6"
+          stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+    <text x="390" y="174" fill="var(--fg-muted)" font-size="11.5">次の時刻へ（毎時間くり返す）</text>
+
+    <text x="390" y="20" fill="var(--fg)" font-size="13" font-weight="700">1 ステップの流れ</text>
+  </g>
+</svg>
+</div>
+
+<div class="callout">
+  <span class="label">ポイント</span>
+  <p>
+    Expert 自身を賢くする話ではありません。<strong>与えられた Expert 群をどう混ぜるか</strong>だけを考えます。
+    だからこそ、Expert が何であっても（統計モデルでも、深層学習でも、人間の勘でも）同じ理論が使えます。
+  </p>
+</div>
+
+<h2>2. まず素朴に：全部平均する</h2>
+
+<p>
+いちばん簡単なのは 30 人の予測を単純平均することです（<strong>Equal Weight</strong>）。
+悪くない出発点で、実際に多くの場面で単一モデルより安定します。しかし弱点があります:
+<strong>明らかに的外れな Expert が 1 人いるだけで、平均が引きずられる</strong>のです。
+</p>
+
+<p>
+このプロジェクトの Expert 群には「直近 168 時間の平均」のように、
+急変時にはまったく当たらないものも含まれています。実験では等重み平均が
+最良の Expert より <strong>2〜3 倍悪い</strong>結果になりました。
+当たっている人を重く、外している人を軽くしたい — これが Hedge の動機です。
+</p>
+
+<h2>3. Hedge：当たっている Expert を重くする</h2>
+
+<p>
+各 Expert に重み \(w_i\) を持たせます。最初は全員同じ（\(w_i = 1\)）。予測は重みの比で混ぜます:
+</p>
+
+$$\hat{y} = \sum_{i=1}^{N} p_i f_i, \qquad p_i = \frac{w_i}{\sum_j w_j}$$
+
+<p>
+正解 \(y\) が分かったら、各 Expert の<strong>損失</strong> \(\ell_i\)（ここでは絶対誤差 \(|y - f_i|\)）を計算し、
+重みを掛け算で減らします:
+</p>
+
+$$w_i \leftarrow w_i \cdot e^{-\eta\, \ell_i}$$
+
+<p>
+損失が大きいほど \(e^{-\eta \ell_i}\) は小さくなるので、外した Expert の重みは強く削られます。
+\(\eta\)（イータ）は<strong>どれくらい強く削るか</strong>を決める数字で、<strong>学習率</strong>と呼びます。
+</p>
+
+<h3>数値で追ってみる</h3>
+
+<p>Expert が 3 人、\(\eta = 1\) の場合。最初の重みは全員 1/3 です。</p>
+
+<div class="table-wrap">
+<table>
+  <caption>Hedge の重みが 2 ステップでどう動くか（η = 1）</caption>
+  <thead>
+    <tr><th>Expert</th><th class="num">1 回目の損失</th><th class="num">更新後の重み</th>
+        <th class="num">2 回目の損失</th><th class="num">累積損失</th><th class="num">更新後の重み</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>A（よく当たる）</td><td class="num">0.1</td><td class="num">0.482</td>
+        <td class="num">0.2</td><td class="num">0.3</td><td class="num win">0.571</td></tr>
+    <tr><td>B（ふつう）</td><td class="num">0.5</td><td class="num">0.323</td>
+        <td class="num">0.4</td><td class="num">0.9</td><td class="num">0.314</td></tr>
+    <tr><td>C（外しがち）</td><td class="num">1.0</td><td class="num">0.196</td>
+        <td class="num">0.9</td><td class="num">1.9</td><td class="num lose">0.115</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+A の重みが 0.333 → 0.482 → 0.571 と増え、C は 0.333 → 0.196 → 0.115 と減っていきます。
+掛け算で更新するので、重みは<strong>累積損失だけで決まります</strong>:
+\(w_i \propto e^{-\eta L_i}\)（\(L_i\) は Expert \(i\) の累積損失）。
+これは後で効いてくる重要な性質です。
+</p>
+
+<details>
+  <summary>実装メモ：なぜ対数で持つのか</summary>
+  <p>
+    数万ステップ回すと \(e^{-\eta L_i}\) は簡単に \(10^{-300}\) を下回り、
+    浮動小数点では 0 になってしまいます（アンダーフロー）。そこで実装では
+    \(\log w_i\) を保持し、更新は引き算 <code>log_w -= eta * losses</code>、
+    正規化は softmax 相当（最大値を引いてから <code>exp</code>）で行います。
+    本リポジトリの <code>src/ensemble/hedge.py</code> がこの方式です。
+  </p>
+</details>
+
+<h2>4. 「良さ」の測り方：後悔（regret）</h2>
+
+<p>
+オンライン予測では「正解率」ではなく <strong>後悔（regret）</strong>という指標を使います。定義はとても素直です:
+</p>
+
+$$R_T = \underbrace{\sum_{t=1}^{T} \ell(\hat{y}_t)}_{\text{自分の累積損失}} \;-\; \underbrace{\min_{i}\sum_{t=1}^{T} \ell_i(t)}_{\text{最良の 1 本の累積損失}}$$
+
+<p>
+日本語にすると「<strong>後から振り返って、いちばん良かった Expert 1 人にずっと任せておけばよかった量</strong>」です。
+regret が 0 なら「最良の 1 本と同じ成績」、負なら「最良の 1 本より良かった」ことになります。
+</p>
+
+<p>Hedge には次の保証があります（損失が \([0,1]\) に収まる場合）:</p>
+
+$$R_T \le \sqrt{\tfrac{T}{2}\ln N} \quad\Longrightarrow\quad \frac{R_T}{T} \to 0$$
+
+<p>
+つまり <strong>1 ステップあたりの後悔はゼロに近づく</strong>。
+これは「どの Expert が良いかを事前に知らなくても、後から見た最良の 1 本にほぼ追いつける」
+という、とても強い主張です。しかも Expert の中身に何の仮定も要りません。
+</p>
+
+<div class="callout warn">
+  <span class="label">ここが落とし穴</span>
+  <p>
+    保証の基準は <strong>「最良の<em>固定</em> Expert」</strong>です。「それを超える」とは一言も言っていません。
+    実際、絶対誤差のような<strong>線形な損失</strong>では、指数重みで超えることは原理的にできません
+    （専門用語では「絶対損失は mixable でない」と言います）。
+    <strong>データが定常で、最良 Expert が最初から最後まで同じ 1 本なら、Hedge にできることは何もない</strong>
+    — これが本プロジェクトの結果が退屈だった理由そのものです（<a href="experiment.html">実験レポート</a>参照）。
+  </p>
+</div>
+
+<details>
+  <summary>補足：二乗損失なら話が変わる</summary>
+  <p>
+    損失を二乗誤差にすると、指数重み法は <em>exp-concave</em> な損失に対する強い保証
+    （\(R_T = O(\log N)\)、\(\sqrt{T}\) が消える）を持ちます。さらに、誤差が打ち消し合う
+    Expert 群では、凸結合が<strong>すべての Expert を上回る</strong>ことが実際に起こります。
+    本リポジトリのテスト <code>tests/test_new_aggregators.py</code> には、
+    誤差が逆相関する 3 つの Expert に対して ML-Poly が全 Expert を上回ることを
+    確認するテストが入っています。
+  </p>
+</details>
+
+<h2>5. 学習率 η をどう決めるか</h2>
+
+<p>η は「重みをどれだけ急に動かすか」を決めます。極端な例で考えると分かりやすいです。</p>
+
+<ul>
+  <li><strong>η が大きすぎる</strong>：たまたま 1 回外しただけの Expert を切り捨ててしまい、予測がガタつく。</li>
+  <li><strong>η が小さすぎる</strong>：重みがほとんど動かず、いつまでも等重み平均のまま。</li>
+</ul>
+
+<p>適切な η はデータの性質と損失のスケールに依存し、事前には分かりません。対策は 3 通りあります。</p>
+
+<h3>(a) 損失を正規化する</h3>
+<p>
+そもそも損失の大きさが系列ごとに違う（1 MW 単位の系列と 10,000 MW 単位の系列）と、
+同じ η でも効き方がまるで変わります。そこで各系列の
+「訓練期間で直近値予測をしたときの MAE」で損失を割り、\(O(1)\) に揃えます。
+本リポジトリの <code>--scale-loss by_train_mae</code> がこれです。
+</p>
+
+<h3>(b) Meta-η（二段 Hedge）</h3>
+<p>
+η の候補（\(2^0, 2^{-1}, \ldots, 2^{-10}\)）ごとに独立した Hedge を走らせ、
+<strong>その 11 個の出力をもう一段の Hedge で混ぜる</strong>方法です。
+「学習率そのものを学習する」ので、手でチューニングしなくて済みます。
+本リポジトリの既定はこれ（<code>src/ensemble/meta_eta.py</code>）。
+</p>
+
+<h3>(c) AdaHedge（パラメータなし）</h3>
+<p>
+実際に観測された <em>mixability gap</em>（重み付き平均の損失と、理論上の下限との差）を
+足し上げ、その値から η を決めます:
+</p>
+
+$$\eta_{t+1} = \frac{\ln N}{\Delta_t}, \qquad
+\Delta_t = \sum_{s \le t}\Big(\underbrace{\langle w_s, \ell_s\rangle}_{\text{期待損失}} - \underbrace{-\tfrac{1}{\eta_s}\ln\langle w_s, e^{-\eta_s \ell_s}\rangle}_{\text{mix loss}}\Big)$$
+
+<p>
+予測が簡単な期間は \(\Delta\) が伸びず η が大きいまま（＝最良 Expert に素早く張り付く）、
+難しい期間は \(\Delta\) が伸びて η が下がる（＝慎重に混ぜる）、という自動調整になります。
+候補グリッドも地平線 \(T\) も要りません（<code>src/ensemble/adahedge.py</code>）。
+</p>
+
+<h2>6. Fixed-Share：一度見捨てた Expert に戻れるようにする</h2>
+
+<p>
+ここが本プロジェクトで<strong>いちばん効いた</strong>部分です。
+</p>
+
+<p>
+Hedge の重みは \(w_i \propto e^{-\eta L_i}\) でした。つまり<strong>累積</strong>損失だけで決まります。
+1 万ステップ回った後、ある Expert の累積損失がライバルより 100 だけ大きいと、
+その重みは \(e^{-100} \approx 10^{-44}\)。ここから復帰するには、
+<strong>ライバルより累積で 100 も勝ち越す</strong>必要があります。何千ステップもかかります。
+</p>
+
+<p>
+しかし現実のデータでは、状況が変われば「勝つべき Expert」も変わります。
+夏と冬、平日と休日、平常時とロックダウン。Hedge は<strong>過去に引きずられて動けない</strong>のです。
+</p>
+
+<p>
+<strong>Fixed-Share</strong>（Herbster &amp; Warmuth, 1998）の解決策は拍子抜けするほど簡単です。
+毎ステップ、指数更新のあとに重みの一部を全員へ配り直します:
+</p>
+
+$$w \leftarrow (1-\alpha)\, w \;+\; \frac{\alpha}{N}$$
+
+<div class="svg-figure">
+<svg viewBox="0 0 720 250" role="img" aria-label="Fixed-Share の share ステップによる重みの下限">
+  <g font-size="12" font-family="inherit">
+    <text x="30" y="24" fill="var(--fg)" font-size="13" font-weight="700">指数更新の直後</text>
+    <text x="410" y="24" fill="var(--fg)" font-size="13" font-weight="700">share ステップの後（α = 0.1）</text>
+
+    <g>
+      <rect x="30" y="40" width="46" height="150" fill="var(--accent)" opacity="0.85"/>
+      <rect x="86" y="186" width="46" height="4" fill="var(--fg-muted)" opacity="0.5"/>
+      <rect x="142" y="188" width="46" height="2" fill="var(--fg-muted)" opacity="0.5"/>
+      <rect x="198" y="189" width="46" height="1" fill="var(--fg-muted)" opacity="0.5"/>
+      <rect x="254" y="189.5" width="46" height="0.5" fill="var(--fg-muted)" opacity="0.5"/>
+      <line x1="24" y1="190" x2="310" y2="190" stroke="var(--border)" stroke-width="1.4"/>
+      <text x="167" y="212" fill="var(--fg-muted)" text-anchor="middle">1 人が独占し、他は実質ゼロ</text>
+      <text x="167" y="232" fill="var(--bad)" text-anchor="middle" font-size="11.5">← ここから復帰できない</text>
+    </g>
+
+    <g>
+      <rect x="410" y="55" width="46" height="135" fill="var(--accent)" opacity="0.85"/>
+      <rect x="466" y="172" width="46" height="18" fill="var(--good)" opacity="0.75"/>
+      <rect x="522" y="173" width="46" height="17" fill="var(--good)" opacity="0.75"/>
+      <rect x="578" y="173.5" width="46" height="16.5" fill="var(--good)" opacity="0.75"/>
+      <rect x="634" y="173.5" width="46" height="16.5" fill="var(--good)" opacity="0.75"/>
+      <line x1="404" y1="190" x2="690" y2="190" stroke="var(--border)" stroke-width="1.4"/>
+      <line x1="404" y1="172" x2="690" y2="172" stroke="var(--good)" stroke-width="1.3" stroke-dasharray="5 4"/>
+      <text x="694" y="169" fill="var(--good)" font-size="11" text-anchor="end">下限 α/N</text>
+      <text x="547" y="212" fill="var(--fg-muted)" text-anchor="middle">全員が最低 α/N を確保</text>
+      <text x="547" y="232" fill="var(--good)" text-anchor="middle" font-size="11.5">← 数十ステップで逆転できる</text>
+    </g>
+  </g>
+</svg>
+</div>
+
+<p>
+これだけで、どの Expert の重みも <strong>\(\alpha/N\) を下回らなくなります</strong>。
+負け続けた Expert も「最低限の席」を持ち続けるので、状況が変われば
+数十ステップで首位に返り咲けます。
+</p>
+
+<p>
+理論的には、比較対象が変わります。Hedge の基準が「最良の<strong>固定</strong> Expert」だったのに対し、
+Fixed-Share の基準は「<strong>途中で \(m\) 回まで乗り換えてよい最良の Expert 系列</strong>」です。
+乗り換えオラクルは固定 1 本より当然強いので、<strong>Fixed-Share は最良の固定 Expert を実際に下回れます</strong>。
+</p>
+
+<p>
+唯一のつまみが \(\alpha\) です。切り替えが \(m\) 回起きると分かっていれば \(\alpha = m/(T-1)\) が理論的な目安ですが、
+実験では広い範囲で効くことが確認できました（<a href="replication.html#alpha">追試結果の α 感度</a>）。
+\(\alpha = 0\) にすると Hedge に完全に一致します。
+</p>
+
+<h2>7. ML-Poly：アンサンブル自身を基準にする</h2>
+
+<p>
+もう 1 つ性格の違うアルゴリズムを入れてあります。Hedge が各 Expert の<strong>損失</strong>を累積するのに対し、
+ML-Poly（Gaillard, Stoltz &amp; van Erven, 2014）は<strong>アンサンブル自身に対する後悔</strong>を累積します:
+</p>
+
+$$r_{i,t} = \ell(\hat{y}_t) - \ell_i(t), \qquad R_{i,t} = \sum_{s \le t} r_{i,s}$$
+
+<p>
+そして「<strong>今のアンサンブルより良かった Expert</strong>」にだけ重みを置きます:
+</p>
+
+$$p_{i,t} \propto \eta_{i,t-1}\,\max(R_{i,t-1},\, 0), \qquad
+\eta_{i,t} = \frac{1}{1 + \sum_{s\le t} r_{i,s}^2}$$
+
+<p>
+学習率が Expert ごとに、観測された分散から自動で決まるのが特徴です（つまみゼロ）。
+基準がアンサンブル自身なので、Expert の誤差が打ち消し合う場合には
+<strong>全 Expert を上回る</strong>ことがあります。R の <code>opera</code> パッケージで
+電力需要予測の実務に使われている手法です（<code>src/ensemble/ml_poly.py</code>）。
+</p>
+
+<h2>8. まとめ：どれをいつ使うか</h2>
+
+<div class="table-wrap">
+<table>
+  <caption>本リポジトリに実装されている集約アルゴリズム</caption>
+  <thead>
+    <tr><th>アルゴリズム</th><th>比較対象（何に追いつくか）</th><th>つまみ</th><th>効く場面</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Equal Weight</td><td>—（ただの平均）</td><td>なし</td>
+      <td>Expert の質が揃っているとき</td>
+    </tr>
+    <tr>
+      <td>Follow the Leader</td><td>最良の固定 Expert</td><td>なし</td>
+      <td>完全に定常なデータ</td>
+    </tr>
+    <tr>
+      <td>Hedge</td><td>最良の固定 Expert</td><td>η</td>
+      <td>定常だが最良 Expert が事前に不明</td>
+    </tr>
+    <tr>
+      <td>Meta-η Hedge</td><td>最良の固定 Expert</td><td>η の候補集合</td>
+      <td>η を決めたくないとき</td>
+    </tr>
+    <tr>
+      <td>AdaHedge</td><td>最良の固定 Expert</td><td><strong>なし</strong></td>
+      <td>η を決めたくないとき（候補も不要）</td>
+    </tr>
+    <tr class="row-highlight">
+      <td><strong>Fixed-Share</strong></td><td><strong>最良の切り替え系列</strong></td><td>α, η</td>
+      <td><strong>レジームが変わる／非定常なデータ</strong></td>
+    </tr>
+    <tr>
+      <td>ML-Poly</td><td>アンサンブル自身への後悔</td><td><strong>なし</strong></td>
+      <td>Expert の誤差が打ち消し合うとき</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout good">
+  <span class="label">この解説のまとめ</span>
+  <p>
+    <strong>Hedge 系（Hedge / Meta-η / AdaHedge）は「最良の 1 本に追いつく」ためのもの</strong>で、
+    それを超えることは設計上ありません。超えたいなら、比較対象を変えるアルゴリズム
+    — 乗り換えを許す Fixed-Share、アンサンブル自身を基準にする ML-Poly — が必要です。
+    実際にどれくらい差が出るかは<a href="replication.html">追試結果</a>で確認できます。
+  </p>
+</div>
+
+<h2>参考文献</h2>
+
+<ol>
+  <li>Cesa-Bianchi, N. &amp; Lugosi, G. (2006). <em>Prediction, Learning, and Games</em>. Cambridge University Press. — 理論の教科書。</li>
+  <li>Freund, Y. &amp; Schapire, R. E. (1997). A decision-theoretic generalization of on-line learning and an application to boosting. <em>JCSS</em>, 55(1), 119–139. — Hedge の原論文。</li>
+  <li>Herbster, M. &amp; Warmuth, M. K. (1998). Tracking the best expert. <em>Machine Learning</em>, 32(2), 151–178. — Fixed-Share の原論文。</li>
+  <li>de Rooij, S., van Erven, T., Grünwald, P. D. &amp; Koolen, W. M. (2014). Follow the leader if you can, hedge if you must. <em>JMLR</em>, 15, 1281–1316. — AdaHedge。</li>
+  <li>Gaillard, P., Stoltz, G. &amp; van Erven, T. (2014). A second-order bound with excess losses. <em>COLT</em>. — ML-Poly。</li>
+  <li>Devaine, M., Gaillard, P., Goude, Y. &amp; Stoltz, G. (2013). Forecasting electricity consumption by aggregating specialized experts. <em>Machine Learning</em>, 90(2), 231–260. — 電力需要予測への応用。</li>
+  <li>Obst, D., de Vilmarest, J. &amp; Goude, Y. (2021). Adaptive methods for short-term electricity load forecasting during COVID-19 lockdown in France. <em>IEEE Trans. Power Systems</em>, 36(5), 4754–4763.</li>
+</ol>
+
+</main>
+
+<footer class="site-footer">
+  <div class="inner">
+    Expert Advise — Prediction with Expert Advice for electricity load forecasting.
+    ソースコードは <a href="https://github.com/gghatano/expert_advice">GitHub リポジトリ</a>にあります。
+  </div>
+</footer>
+
+</body>
+</html>

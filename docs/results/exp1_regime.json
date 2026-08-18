@@ -1,0 +1,168 @@
+{
+  "n_steps": 7664,
+  "n_experts": 8,
+  "eval_loss": "abs",
+  "best_fixed_expert": {
+    "name": "LastValue",
+    "index": 0,
+    "mean_loss": 7.77034344883424
+  },
+  "worst_expert_mean_loss": 144.83961465962597,
+  "expert_ranking": [
+    {
+      "name": "LastValue",
+      "mean_loss": 7.77034344883424
+    },
+    {
+      "name": "SMA_4",
+      "mean_loss": 8.412016285207985
+    },
+    {
+      "name": "EMA_0.3",
+      "mean_loss": 8.602553988560418
+    },
+    {
+      "name": "SMA_24",
+      "mean_loss": 11.564379321399144
+    },
+    {
+      "name": "SeasonalNaive_24",
+      "mean_loss": 11.957922512444501
+    },
+    {
+      "name": "Drift_24",
+      "mean_loss": 12.168160527724071
+    },
+    {
+      "name": "SeasonalNaive_168",
+      "mean_loss": 35.611560366564575
+    },
+    {
+      "name": "SeasonalProfile",
+      "mean_loss": 144.83961465962597
+    }
+  ],
+  "algorithms": [
+    {
+      "algorithm": "Equal Weight",
+      "mean_loss": 22.471366546482717,
+      "vs_best_fixed_pct": 189.1939937333661,
+      "beats_best_fixed": false
+    },
+    {
+      "algorithm": "Follow the Leader",
+      "mean_loss": 7.776239882777631,
+      "vs_best_fixed_pct": 0.07588382652860831,
+      "beats_best_fixed": false
+    },
+    {
+      "algorithm": "Hedge (tuned eta)",
+      "mean_loss": 7.762970631618968,
+      "vs_best_fixed_pct": -0.09488405839227888,
+      "beats_best_fixed": true,
+      "eta": 0.1
+    },
+    {
+      "algorithm": "Meta-eta Hedge",
+      "mean_loss": 7.777247091555057,
+      "vs_best_fixed_pct": 0.0888460435021335,
+      "beats_best_fixed": false
+    },
+    {
+      "algorithm": "AdaHedge",
+      "mean_loss": 7.774245871653506,
+      "vs_best_fixed_pct": 0.0502220119993713,
+      "beats_best_fixed": false
+    },
+    {
+      "algorithm": "Fixed-Share",
+      "mean_loss": 5.452683468808651,
+      "vs_best_fixed_pct": -29.826995361103382,
+      "beats_best_fixed": true
+    },
+    {
+      "algorithm": "ML-Poly",
+      "mean_loss": 7.827200862057064,
+      "vs_best_fixed_pct": 0.7317232963667009,
+      "beats_best_fixed": false
+    }
+  ],
+  "oracle_switching_mean_loss": 5.263583804807701,
+  "per_regime": [
+    {
+      "regime": "A: strong daily cycle",
+      "best_expert": "SeasonalProfile",
+      "mean_loss": 0.9748556697374965,
+      "best_fixed_expert_loss_here": 5.074508886962816
+    },
+    {
+      "regime": "B: random walk",
+      "best_expert": "LastValue",
+      "mean_loss": 2.3974062753950687,
+      "best_fixed_expert_loss_here": 2.3974062753950687
+    },
+    {
+      "regime": "C: noisy flat level",
+      "best_expert": "SMA_24",
+      "mean_loss": 14.357612459065853,
+      "best_fixed_expert_loss_here": 19.772684091274296
+    },
+    {
+      "regime": "D: steep trend",
+      "best_expert": "Drift_24",
+      "mean_loss": 2.603954488340593,
+      "best_fixed_expert_loss_here": 3.3838743353103884
+    }
+  ],
+  "regime_bounds": [
+    0,
+    1664,
+    3664,
+    5664,
+    7664
+  ],
+  "warmup": 336,
+  "loss_scale": 5.0597787772269225,
+  "alpha_sensitivity": [
+    {
+      "alpha": 0.0,
+      "mean_loss": 6.344893963401315
+    },
+    {
+      "alpha": 1e-05,
+      "mean_loss": 5.315457198667739
+    },
+    {
+      "alpha": 0.0001,
+      "mean_loss": 5.352877385643657
+    },
+    {
+      "alpha": 0.0003,
+      "mean_loss": 5.389162768667272
+    },
+    {
+      "alpha": 0.001,
+      "mean_loss": 5.452683468808651
+    },
+    {
+      "alpha": 0.003,
+      "mean_loss": 5.530103669310091
+    },
+    {
+      "alpha": 0.01,
+      "mean_loss": 5.632742342335464
+    },
+    {
+      "alpha": 0.03,
+      "mean_loss": 5.793186623955226
+    },
+    {
+      "alpha": 0.1,
+      "mean_loss": 6.584188858999494
+    },
+    {
+      "alpha": 0.3,
+      "mean_loss": 9.797866189780091
+    }
+  ]
+}
